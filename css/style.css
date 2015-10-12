@@ -1,0 +1,22 @@
+body {
+    font-family: Helvetica, sans-serif;
+}
+[class*='col-'] {
+  float: left;
+  border-width: 1px;
+  border-color: black;
+  border-style: solid;
+  margin: 2px;
+  text-align: center;
+}
+
+.grid:after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.textinput,
+.midinoteinput {
+    width: 100%;
+}
