@@ -67,7 +67,7 @@ function vocoder(ctx, cb, mb) {
   var oscillatorGain = null;
   var oscillatorGainValue = 1.0;
   var oscillatorDetuneValue = 0;
-  var FOURIER_SIZE = 4096;
+  var FOURIER_SIZE = 2048;
   var wavetable = null;
   var wavetableSignalGain = null;
   var WAVETABLEBOOST = 40.0;
