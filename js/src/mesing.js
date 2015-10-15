@@ -15,6 +15,7 @@ meSing.defaults = {
                 67,"","",65,64,"","",62,60,"",64,"",67,"",72,"",
                ],
     wordgap: 50,
+    speed: 120,
 };
 
 meSing.midiToHz = function(midi) {
@@ -26,9 +27,11 @@ meSing.midiToHz = function(midi) {
  * Session class
  */
 meSing.Session = function() {
+    var session = this;
     this.ctx = new AudioContext();
     // this.vocoder = vocoder(this.ctx);
     this.voices = [];
+    this.voiceData = "";
     this.grid = $("#msDisplay"); //todo: else create element
     this.metro = T("interval",
                     {interval: "BPM" + meSing.defaults.bpm + 
@@ -38,13 +41,24 @@ meSing.Session = function() {
                         var measureNum = Math.floor(count / meSing.defaults.steps.length) % meSing.defaults.numMeasures;
                         var stepNum = count % meSing.defaults.steps.length;
                         var stepId = "measure" + measureNum + "step" + stepNum;
+                        var text = $(stepId + " > .textinput").val();
+                        var midinote = $(stepId + " > .midinoteinput").val();
                         var labelId = "label" + stepNum;
+                        var inputs = $("#"+stepId+">input[type='text']");
+                        var voice = session.ctx.createBufferSource();
+                        var offset = ((measureNum*10) + stepNum) * (meSing.defaults.wordgap/1000) * (meSing.defaults.speed / 60);
+                        console.log(offset);
+
+                        // audio
+                        voice.buffer = session.voiceData;
+                        voice.connect(session.ctx.destination);
+                        voice.start(session.ctx.currentTime, offset, 2);
+
 
                         // display
                         $(".col-a").removeClass("playing");
                         $("input[type='text']").removeClass("playing");
                         $("#" + labelId).addClass("playing");
-                        var inputs = $("#"+stepId+">input[type='text']");
                         for (var i=0; i<inputs.length; i++) {
                             var input = inputs[i];
                             if (input !== undefined && input.value.length > 0) {
@@ -52,13 +66,14 @@ meSing.Session = function() {
                             }
                         }
 
-                        console.log("m"+measureNum+"s"+stepNum);
+                        // console.log("m"+measureNum+"s"+stepNum);
                     });
 
 
     meSpeak.loadConfig("/js/lib/mespeak/mespeak_config.json");
     meSpeak.loadVoice("/js/lib/mespeak/voices/en/en-us.json", function() {
         console.log("mespeak voice loaded");
+        session.setVoices();
     });
 };
 meSing.Session.prototype = {
@@ -82,11 +97,13 @@ meSing.Session.prototype = {
             pitch: pitch,
             rawdata: "ArrayBuffer",
             wordgap: meSing.defaults.wordgap,
+            speed: meSing.defaults.speed,
         });
         var v;
         var session = this;
         this.ctx.decodeAudioData(speechData, function(decodedData) {
             ab.buffer = decodedData;
+            session.voiceData = decodedData;
             
             ab.connect(session.ctx.destination);
             
@@ -154,6 +171,10 @@ meSing.Session.prototype = {
                 var text = $(id + " > .textinput").val();
                 var midinote = $(id + " > .midinoteinput").val();
                 // this.addVoice(text, midinote);
+
+                if (text == "") {
+                    // text = "(break)";
+                }
                 texts.push(text);
                 notes.push(midinote);
             }
