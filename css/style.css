@@ -20,3 +20,7 @@ body {
 .midinoteinput {
     width: 100%;
 }
+
+.playing {
+    background-color: #FF6200;
+}

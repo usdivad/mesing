@@ -13,7 +13,8 @@ meSing.defaults = {
                 64,"","",62,64,"","",65,67,67,67,67,"","","","",
                 72,"",72,72,67,"",67,67,64,"",64,64,60,"",60,60,
                 67,"","",65,64,"","",62,60,"",64,"",67,"",72,"",
-               ]
+               ],
+    wordgap: 50,
 };
 
 meSing.midiToHz = function(midi) {
@@ -29,7 +30,30 @@ meSing.Session = function() {
     // this.vocoder = vocoder(this.ctx);
     this.voices = [];
     this.grid = $("#msDisplay"); //todo: else create element
-    this.metro = T("interval");
+    this.metro = T("interval",
+                    {interval: "BPM" + meSing.defaults.bpm + 
+                               " L" + meSing.defaults.steps.length
+                    },
+                    function(count) {
+                        var measureNum = Math.floor(count / meSing.defaults.steps.length) % meSing.defaults.numMeasures;
+                        var stepNum = count % meSing.defaults.steps.length;
+                        var stepId = "measure" + measureNum + "step" + stepNum;
+                        var labelId = "label" + stepNum;
+
+                        // display
+                        $(".col-a").removeClass("playing");
+                        $("input[type='text']").removeClass("playing");
+                        $("#" + labelId).addClass("playing");
+                        var inputs = $("#"+stepId+">input[type='text']");
+                        for (var i=0; i<inputs.length; i++) {
+                            var input = inputs[i];
+                            if (input !== undefined && input.value.length > 0) {
+                                inputs.addClass("playing");
+                            }
+                        }
+
+                        console.log("m"+measureNum+"s"+stepNum);
+                    });
 
 
     meSpeak.loadConfig("/js/lib/mespeak/mespeak_config.json");
@@ -57,6 +81,7 @@ meSing.Session.prototype = {
         var speechData = meSpeak.speak(text, {
             pitch: pitch,
             rawdata: "ArrayBuffer",
+            wordgap: meSing.defaults.wordgap,
         });
         var v;
         var session = this;
@@ -78,58 +103,65 @@ meSing.Session.prototype = {
         });
     },
 
-    playVoice: function(text, pitch) {
-if (!meSpeak.isConfigLoaded()) {
-            console.log("config not yet loaded; please wait");
-            return;
-        }
-        if (pitch === undefined || pitch.length == 0) {
-            // pitch = Math.random()*100;
-            return [];
-        }
-        if (text === undefined || text.length == 0) {
-            return [];
-        }
-        var ab = this.ctx.createBufferSource();
-        ab.id = Math.floor(Math.random()*100000000);
-        var speechData = meSpeak.speak(text, {
-            pitch: pitch,
-            rawdata: "ArrayBuffer",
-        });
-        var v;
-        var session = this;
-        this.ctx.decodeAudioData(speechData, function(decodedData) {
-            ab.buffer = decodedData;
+    // playVoice: function(text, pitch) {
+    //     if (!meSpeak.isConfigLoaded()) {
+    //         console.log("config not yet loaded; please wait");
+    //         return;
+    //     }
+    //     if (pitch === undefined || pitch.length == 0) {
+    //         // pitch = Math.random()*100;
+    //         return [];
+    //     }
+    //     if (text === undefined || text.length == 0) {
+    //         return [];
+    //     }
+    //     var ab = this.ctx.createBufferSource();
+    //     ab.id = Math.floor(Math.random()*100000000);
+    //     var speechData = meSpeak.speak(text, {
+    //         pitch: pitch,
+    //         rawdata: "ArrayBuffer",
+    //     });
+    //     var v;
+    //     var session = this;
+    //     this.ctx.decodeAudioData(speechData, function(decodedData) {
+    //         ab.buffer = decodedData;
             
-            ab.connect(session.ctx.destination);
+    //         ab.connect(session.ctx.destination);
             
-            // ab.loop = true;
-            ab.start();
-            console.log(ab);
+    //         // ab.loop = true;
+    //         ab.start();
+    //         console.log(ab);
 
-            console.log("just created " + ab.id);
-            session.voices.push(ab);
+    //         console.log("just created " + ab.id);
+    //         session.voices.push(ab);
 
-            // Voice
-            // v = vocoder(session.ctx, ab, ab);
-            // this.voices.push(v);
-        });        
-    },
+    //         // Voice
+    //         // v = vocoder(session.ctx, ab, ab);
+    //         // this.voices.push(v);
+    //     });        
+    // },
 
     setVoices: function() {
         var steps = meSing.defaults.steps.length;
         var measures = meSing.defaults.numMeasures;
+        var texts = [];
+        var notes = [];
         this.voices = []; // garbage coll?
 
-        // BAD! causes overflow
         for (var i=0; i<measures; i++) {
             for (var j=0; j<steps; j++) {
                 var id = "#measure"+i+"step"+j;
                 var text = $(id + " > .textinput").val();
                 var midinote = $(id + " > .midinoteinput").val();
-                this.addVoice(text, midinote);
+                // this.addVoice(text, midinote);
+                texts.push(text);
+                notes.push(midinote);
             }
         }
+
+        console.log(texts.join(" "));
+
+        this.addVoice(texts.join(" "), notes[0]);
     },
 
     initDisplay: function() {
@@ -140,7 +172,7 @@ if (!meSpeak.isConfigLoaded()) {
         var midinoteinput = meSing.defaults.midinoteinput;
 
         for (var i=0; i<steps.length; i++) {
-            var col = $("<div class='col-a'><strong>" + steps[i] + "</strong></div>");
+            var col = $("<div class='col-a' id='label" + i + "'><strong>" + steps[i] + "</strong></div>");
             col.css("width", (widthScale/steps.length) + "%");
             this.grid.append(col);
         }
