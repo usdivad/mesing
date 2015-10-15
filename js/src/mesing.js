@@ -3,10 +3,10 @@ var meSing = meSing || {};
 meSing.defaults = {
     steps: "1e&a2e&a3e&a4e&a",
     numMeasures: 4,
-    bpm: 120,
+    bpm: 100,
     textinput: ["Row","","","","row","","","","row","","","your","boat","","","",
-                "gent-","","","-ly","down","","","the","stream","","","","","","","",
-                "Merr-","","-il-","-ly","Merr-","","-il-","-ly","Merr-","","-il-","-ly","Merr-","","-il-","-ly",
+                "gent-","","","-lee","down","","","the","stream","","","","","","","",
+                "Merr-","","-il-","-lee","Merr-","","-il-","-lee","Merr-","","-il-","-lee","Merr-","","-il-","-lee",
                 "life","","","is","but","","","a","dream","","dream","","dream","","dream","",           
                ],
     midinoteinput: [60,"","","",60,"","","",60,"","",62,64,"","","",
@@ -15,7 +15,7 @@ meSing.defaults = {
                 67,"","",65,64,"","",62,60,"",64,"",67,"",72,"",
                ],
     wordgap: 50,
-    speed: 120,
+    speed: 180,
 };
 
 meSing.midiToHz = function(midi) {
@@ -31,6 +31,8 @@ meSing.Session = function() {
     this.ctx = new AudioContext();
     // this.vocoder = vocoder(this.ctx);
     this.voices = [];
+    this.lyrics = [];
+    this.lyricsCount = 0;
     this.voiceData = "";
     this.grid = $("#msDisplay"); //todo: else create element
     this.metro = T("interval",
@@ -41,20 +43,24 @@ meSing.Session = function() {
                         var measureNum = Math.floor(count / meSing.defaults.steps.length) % meSing.defaults.numMeasures;
                         var stepNum = count % meSing.defaults.steps.length;
                         var stepId = "measure" + measureNum + "step" + stepNum;
-                        var text = $(stepId + " > .textinput").val();
+                        var text = $("#" + stepId + " > .textinput").val();
                         var midinote = $(stepId + " > .midinoteinput").val();
                         var labelId = "label" + stepNum;
                         var inputs = $("#"+stepId+">input[type='text']");
                         var voice = session.ctx.createBufferSource();
-                        var offset = ((measureNum*10) + stepNum) * (meSing.defaults.wordgap/1000) * (meSing.defaults.speed / 60);
-                        console.log(offset);
-
+                        // var offset = ((measureNum*10) + stepNum) * (meSing.defaults.wordgap/100) * (meSing.defaults.speed / 60);
+                        // var offset = (meSing.defaults.speed / 60) * ((session.lyricsCount % session.lyrics.length) * meSing.defaults.wordgap/100);
+                        var offset = (session.lyricsCount % session.lyrics.length) * 0.735; // hacky
+                        // var offset = ((1/(meSing.defaults.speed / 60)) + (meSing.defaults.wordgap/1000)) * (session.lyricsCount % session.lyrics.length);
+                        console.log("offset: " + offset + ", text: " + text);
                         // audio
-                        voice.buffer = session.voiceData;
-                        voice.connect(session.ctx.destination);
-                        voice.start(session.ctx.currentTime, offset, 2);
-
-
+                        if (text !== undefined && text != "") { 
+                            voice.buffer = session.voiceData;
+                            voice.connect(session.ctx.destination);
+                            voice.start(session.ctx.currentTime, offset, 0.8);
+                            session.lyricsCount++;
+                        }
+                       
                         // display
                         $(".col-a").removeClass("playing");
                         $("input[type='text']").removeClass("playing");
@@ -81,7 +87,8 @@ meSing.Session.prototype = {
 
     addVoice: function(text, pitch) {
         if (!meSpeak.isConfigLoaded()) {
-            console.log("config not yet loaded; please wait");
+            var msg = "meSpeak config not yet loaded; please wait and try to set voices again";
+            $("#voicesStatus").text(msg);
             return;
         }
         if (pitch === undefined || pitch.length == 0) {
@@ -102,6 +109,7 @@ meSing.Session.prototype = {
         var v;
         var session = this;
         this.ctx.decodeAudioData(speechData, function(decodedData) {
+            var msg = "voices set to " + ab.id;
             ab.buffer = decodedData;
             session.voiceData = decodedData;
             
@@ -111,7 +119,8 @@ meSing.Session.prototype = {
             // ab.start();
             console.log(ab);
 
-            console.log("just created " + ab.id);
+            console.log(msg);
+            $("#voicesStatus").text(msg);
             session.voices.push(ab);
 
             // Voice
@@ -164,6 +173,7 @@ meSing.Session.prototype = {
         var texts = [];
         var notes = [];
         this.voices = []; // garbage coll?
+        this.lyrics = [];
 
         for (var i=0; i<measures; i++) {
             for (var j=0; j<steps; j++) {
@@ -172,8 +182,10 @@ meSing.Session.prototype = {
                 var midinote = $(id + " > .midinoteinput").val();
                 // this.addVoice(text, midinote);
 
-                if (text == "") {
+                // if (text != "" || midinote != "") {
+                if (text != "") {
                     // text = "(break)";
+                    this.lyrics.push(text);
                 }
                 texts.push(text);
                 notes.push(midinote);
