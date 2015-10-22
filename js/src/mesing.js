@@ -31,6 +31,7 @@ meSing.Session = function() {
     this.ctx = new AudioContext();
     // this.vocoder = vocoder(this.ctx);
     this.voices = [];
+    this.vocoders = [];
     this.lyrics = [];
     this.lyricsCount = 0;
     this.voiceData = "";
@@ -121,11 +122,12 @@ meSing.Session.prototype = {
 
             console.log(msg);
             $("#voicesStatus").text(msg);
-            session.voices.push(ab);
+            // session.voices.push(ab);
 
             // Voice
-            // v = vocoder(session.ctx, ab, ab);
-            // this.voices.push(v);
+            v = vocoder(session.ctx, ab.buffer, ab.buffer);
+            // session.voices.push(v);
+            session.vocoders.push(v);
         });
     },
 
