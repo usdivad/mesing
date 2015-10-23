@@ -7,7 +7,13 @@ window.onload = function() {
     // session.setVoices();
 
     $("#startBtn").on("click", function(){
-        session.metro.start();
+        // session.setVoices();
+        if (session.voices.length > 0) {
+            session.metro.start(); 
+        }
+        else {
+            $("#voicesStatus").text("please set voices before starting audio");
+        }
     });
     $("#stopBtn").on("click", function(){
         session.metro.stop();

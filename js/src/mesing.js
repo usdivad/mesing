@@ -142,7 +142,7 @@ meSing.Session.prototype = {
         var v;
         var session = this;
         this.ctx.decodeAudioData(speechData, function(decodedData) {
-            var msg = "voices set to " + ab.id;
+            var msg = "voices set to " + ab.id + " and ready to go!";
             ab.buffer = decodedData;
             session.voiceData = decodedData;
             
@@ -160,6 +160,7 @@ meSing.Session.prototype = {
             // v = vocoder(session.ctx, ab.buffer, ab.buffer, 100);
             // session.voices.push(v);
             // session.vocoders.push(v);
+            session.voices = [ab];
         });
     },
 
