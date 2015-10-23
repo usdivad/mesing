@@ -3,17 +3,25 @@ var meSing = meSing || {};
 meSing.defaults = {
     steps: "1e&a2e&a3e&a4e&a",
     numMeasures: 4,
-    bpm: 100,
-    textinput: ["Row","","","","row","","","","row","","","your","boat","","","",
-                "gent-","","","-lee","down","","","the","stream","","","","","","","",
-                "Merr-","","-il-","-lee","Merr-","","-il-","-lee","Merr-","","-il-","-lee","Merr-","","-il-","-lee",
-                "life","","","is","but","","","a","dream","","dream","","dream","","dream","",           
-               ],
-    midinoteinput: [60,"","","",60,"","","",60,"","",62,64,"","","",
-                64,"","",62,64,"","",65,67,67,67,67,"","","","",
-                72,"",72,72,67,"",67,67,64,"",64,64,60,"",60,60,
-                67,"","",65,64,"","",62,60,"",64,"",67,"",72,"",
-               ],
+    bpm: 40,
+    // textinput: ["Row","","","","row","","","","row","","","your","boat","","","",
+    //             "gent-","","","-lee","down","","","the","stream","","","","","","","",
+    //             "Merr-","","-il-","-lee","Merr-","","-il-","-lee","Merr-","","-il-","-lee","Merr-","","-il-","-lee",
+    //             "life","","","is","but","","","a","dream","","dream","","dream","","dream","",           
+    //            ],
+    textinput: ["Some","","","","where","","","","o-","","-ver","the","rain-","","-bow","",
+                "way","","","","up","","","","high","","","","","","","",
+                "And","","","","the","","","","dreams","","that","you","dream","","of","",
+                "once","","in","a","lull-","","-a-","","-by","","","","","","","",],
+    // midinoteinput: [60,"","","",60,"","","",60,"","",62,64,"","","",
+    //             64,"","",62,64,"","",65,67,67,67,67,"","","","",
+    //             72,"",72,72,67,"",67,67,64,"",64,64,60,"",60,60,
+    //             67,"","",65,64,"","",62,60,"",64,"",67,"",72,"",
+    //            ],
+    midinoteinput: ["60","","","","72","","","","71","","67","69","71","","72","",
+                "60","","","","69","","","","67","","","","","","","",
+                "57","","","","65","","","","64","","60","62","64","","65","",
+                "62","","59","60","62","","64","","60","60","60","60","","","","",],
     wordgap: 50,
     speed: 180,
 };
@@ -31,6 +39,7 @@ meSing.Session = function() {
     this.ctx = new AudioContext();
     // this.vocoder = vocoder(this.ctx);
     this.voices = [];
+    this.voice = "";
     this.vocoders = [];
     this.lyrics = [];
     this.lyricsCount = 0;
@@ -45,20 +54,43 @@ meSing.Session = function() {
                         var stepNum = count % meSing.defaults.steps.length;
                         var stepId = "measure" + measureNum + "step" + stepNum;
                         var text = $("#" + stepId + " > .textinput").val();
-                        var midinote = $(stepId + " > .midinoteinput").val();
+                        var midinote = $("#" + stepId + " > .midinoteinput").val();
                         var labelId = "label" + stepNum;
                         var inputs = $("#"+stepId+">input[type='text']");
-                        var voice = session.ctx.createBufferSource();
+                        var duration = 0.8;
+                        console.log(midinote);
+
+                        // trying different offset calculations
                         // var offset = ((measureNum*10) + stepNum) * (meSing.defaults.wordgap/100) * (meSing.defaults.speed / 60);
                         // var offset = (meSing.defaults.speed / 60) * ((session.lyricsCount % session.lyrics.length) * meSing.defaults.wordgap/100);
                         var offset = (session.lyricsCount % session.lyrics.length) * 0.735; // hacky
                         // var offset = ((1/(meSing.defaults.speed / 60)) + (meSing.defaults.wordgap/1000)) * (session.lyricsCount % session.lyrics.length);
                         console.log("offset: " + offset + ", text: " + text);
+                        
                         // audio
-                        if (text !== undefined && text != "") { 
-                            voice.buffer = session.voiceData;
-                            voice.connect(session.ctx.destination);
-                            voice.start(session.ctx.currentTime, offset, 0.8);
+                        if (text !== undefined && text !== "") { 
+                            // talking voice
+                            // var voice = session.ctx.createBufferSource();  
+                            // voice.buffer = session.voiceData;
+                            // voice.connect(session.ctx.destination);
+                            // voice.start(session.ctx.currentTime, offset, duration);
+
+                            // singing voice!
+                            // TODO: make it one single vocoder and just alter the osc freq
+                            if (midinote !== undefined && midinote !== "") {
+                                // var voice;
+                                var freq = meSing.midiToHz(midinote - 24);
+                                var offsetSamples = Math.floor(offset * session.ctx.sampleRate);
+                                var durationSamples = Math.floor(duration * session.ctx.sampleRate);
+                                var numChannels = 2;
+                                var frameCount = session.ctx.sampleRate;
+                                var textBuffer = session.ctx.createBuffer(numChannels, frameCount, session.ctx.sampleRate);
+                                console.log("offsetSamples:" + offsetSamples + ", durationSamples:" + durationSamples + ", freq:" + freq);
+                                textBuffer.copyToChannel(session.voiceData.getChannelData(0).slice(offsetSamples, offsetSamples+durationSamples), 0, 0);
+                                this.voice = vocoder(session.ctx, textBuffer, textBuffer, freq);
+                                // session.vocoders.push(voice);
+                                console.log(this.voice);
+                            }
                             session.lyricsCount++;
                         }
                        
@@ -125,9 +157,9 @@ meSing.Session.prototype = {
             // session.voices.push(ab);
 
             // Voice
-            v = vocoder(session.ctx, ab.buffer, ab.buffer);
+            // v = vocoder(session.ctx, ab.buffer, ab.buffer, 100);
             // session.voices.push(v);
-            session.vocoders.push(v);
+            // session.vocoders.push(v);
         });
     },
 

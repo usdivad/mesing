@@ -30,7 +30,7 @@
 
 // Since all this stuff depends on global data, just wrap it all in a clousure
 // for tidyness, and so we can call it multiple times.
-function vocoder(ctx, cb, mb) {
+function vocoder(ctx, cb, mb, oscFreq) {
 
   var audioContext = null;
   var modulatorBuffer = null;
@@ -394,7 +394,7 @@ function vocoder(ctx, cb, mb) {
       oscillatorNode.type = oscillatorType;
       wavetableSignalGain.gain.value = SAWTOOTHBOOST;
     }
-    oscillatorNode.frequency.value = 110;
+    oscillatorNode.frequency.value = oscFreq;
     oscillatorNode.detune.value = oscillatorDetuneValue;
     oscillatorNode.connect(wavetableSignalGain);
 
