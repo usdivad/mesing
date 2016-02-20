@@ -157,13 +157,18 @@ meSing.Session = function() {
                         }
 
                         // console.log("m"+measureNum+"s"+stepNum);
-                    });
+                    }); // end metro
 
+    $(document).ready(function() {
+        meSpeak.loadConfig("/js/lib/mespeak/mespeak_config.json", function() {
+            console.log("config done");
+            $("#voicesStatus").text("meSpeak config loaded; setting voices, please wait...");
 
-    meSpeak.loadConfig("/js/lib/mespeak/mespeak_config.json");
-    meSpeak.loadVoice("/js/lib/mespeak/voices/en/en-us.json", function() {
-        console.log("mespeak voice loaded");
-        session.setVoices();
+            meSpeak.loadVoice("/js/lib/mespeak/voices/en/en-us.json", function() {
+                console.log("mespeak voice loaded");
+                session.setVoices();
+            });
+        });
     });
 };
 meSing.Session.prototype = {
@@ -302,7 +307,17 @@ meSing.Session.prototype = {
 
                         // add voice with single lyric
                         if (this.addVoice(text, midinote, percentage)) {
-                            console.log("adding voice (" + text + ", " + midinote + "); " + percentage + "% complete");
+                            var msg = "adding voice (" + text + ", " + midinote + "); " + percentage + "% complete";
+
+                            console.log(msg);
+                            
+                            // window.setTimeout(function() {
+                            //     console.log(msg);
+                            //     $("#voicesStatus").text(msg);
+                            // }, 1);
+
+                            $("#voicesStatus").text(msg);
+                            // console.log($("#voicesStatus").text());
                         }
                         else {
                             msgOnFinished = "meSing voices not all loaded properly; please wait for meSpeak config to load and call setVoices() again";
