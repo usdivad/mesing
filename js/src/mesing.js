@@ -23,12 +23,26 @@ meSing.defaults = {
                 "57","","","","65","","","","64","","60","62","64","","65","",
                 "62","","59","60","62","","64","","60","60","60","60","","","","",],
     wordgap: 50,
+    // speed: 40 * 6 / 2,
     speed: 180,
+    // speed: 320,
 };
 
 meSing.midiToHz = function(midi) {
     return (440 / 32) * (Math.pow(2,((midi - 9) / 12)));
 };
+
+meSing.concatFloat32Arrays = function(a1, a2) {
+    var arr = new Float32Array(a1.length + a2.length);
+    console.log("a1:" + a1.length + ", a2:" + a2.length + ", arr:" + arr.length);
+    arr.set(a1);
+    arr.set(a2, a1.length);
+    return arr;
+};
+
+meSing.cleanString = function(s) {
+    return s.replace(/[^A-Za-z0-9\s]/g, "");
+}
 
 
 /*
@@ -42,6 +56,7 @@ meSing.Session = function() {
     this.voice = "";
     this.vocoders = [];
     this.lyrics = [];
+    this.lyricToVoice = {};
     this.lyricsCount = 0;
     this.voiceData = "";
     this.grid = $("#msDisplay"); //todo: else create element
@@ -64,6 +79,7 @@ meSing.Session = function() {
                         // var offset = ((measureNum*10) + stepNum) * (meSing.defaults.wordgap/100) * (meSing.defaults.speed / 60);
                         // var offset = (meSing.defaults.speed / 60) * ((session.lyricsCount % session.lyrics.length) * meSing.defaults.wordgap/100);
                         var offset = (session.lyricsCount % session.lyrics.length) * 0.735; // hacky
+                        offset = (0 % session.lyrics.length) * 0.735; // testing with only the first syllable
                         // var offset = ((1/(meSing.defaults.speed / 60)) + (meSing.defaults.wordgap/1000)) * (session.lyricsCount % session.lyrics.length);
                         console.log("offset: " + offset + ", text: " + text);
                         
@@ -77,8 +93,11 @@ meSing.Session = function() {
 
                             // singing voice!
                             // TODO: make it one single vocoder and just alter the osc freq
-                            if (midinote !== undefined && midinote !== "") {
+                            if (midinote !== undefined && midinote !== "" /*&& stepNum==0*/) {
                                 // var voice;
+
+                                // var speakingVoice = this.addVoice(text, 50);
+
                                 var freq = meSing.midiToHz(midinote - 24);
                                 var offsetSamples = Math.floor(offset * session.ctx.sampleRate);
                                 var durationSamples = Math.floor(duration * session.ctx.sampleRate);
@@ -86,8 +105,40 @@ meSing.Session = function() {
                                 var frameCount = session.ctx.sampleRate;
                                 var textBuffer = session.ctx.createBuffer(numChannels, frameCount, session.ctx.sampleRate);
                                 console.log("offsetSamples:" + offsetSamples + ", durationSamples:" + durationSamples + ", freq:" + freq);
-                                textBuffer.copyToChannel(session.voiceData.getChannelData(0).slice(offsetSamples, offsetSamples+durationSamples), 0, 0);
-                                this.voice = vocoder(session.ctx, textBuffer, textBuffer, freq);
+                                
+                                // buffer options
+
+                                // testing slice of whole sample using offset + duration
+                                // textBuffer.copyToChannel(session.voiceData.getChannelData(0).slice(offsetSamples, offsetSamples+durationSamples), 0, 0);
+
+                                // testing whole sample
+                                // textBuffer = session.voiceData;
+
+                                // testing concatenation
+                                // var segment = session.voiceData.getChannelData(0).slice(offsetSamples, offsetSamples+durationSamples);
+                                // var newSegment = meSing.concatFloat32Arrays(segment, segment);
+                                // textBuffer.copyToChannel(newSegment, 0, 0);
+
+                                // reference to ind voice
+                                textBuffer.copyToChannel(session.lyricToVoice[text].buffer.getChannelData(0).slice(0,durationSamples), 0, 0);
+                                
+                                // voice/vocoder options
+
+                                // // 1. create new vocoder for each buffer segment (inefficient)
+                                // delete this.voice;
+                                // this.voice = vocoder(session.ctx, textBuffer, textBuffer, freq);
+
+                                // 2. change pitch of existing vocoder (or create new if non-existent)
+                                //    (requires buffer to be precomposed?)
+                                if (!this.voice) { // do better checking
+                                    this.voice = vocoder(session.ctx, textBuffer, textBuffer, freq);
+                                    console.log("new voice");
+                                }
+                                else {
+                                    this.voice.oscillatorNode.frequency.value = freq;
+                                    console.log("set voice freq to " + freq);
+                                }
+
                                 // session.vocoders.push(voice);
                                 console.log(this.voice);
                             }
@@ -122,23 +173,33 @@ meSing.Session.prototype = {
         if (!meSpeak.isConfigLoaded()) {
             var msg = "meSpeak config not yet loaded; please wait and try to set voices again";
             $("#voicesStatus").text(msg);
-            return;
+            return false;
         }
         if (pitch === undefined || pitch.length == 0) {
             // pitch = Math.random()*100;
-            return [];
+            return false;
         }
         if (text === undefined || text.length == 0) {
-            return [];
+            return false;
         }
+
+        // audio buffer
         var ab = this.ctx.createBufferSource();
         ab.id = Math.floor(Math.random()*100000000);
-        var speechData = meSpeak.speak(text, {
+
+        // cleanup text
+        var cleanText = meSing.cleanString(text);
+        console.log("mespeak params: " + cleanText + ", " + pitch);
+
+        // speech data
+        var speechData = meSpeak.speak(cleanText, {
             pitch: pitch,
             rawdata: "ArrayBuffer",
             wordgap: meSing.defaults.wordgap,
             speed: meSing.defaults.speed,
         });
+
+        // decode speech data
         var v;
         var session = this;
         this.ctx.decodeAudioData(speechData, function(decodedData) {
@@ -160,8 +221,13 @@ meSing.Session.prototype = {
             // v = vocoder(session.ctx, ab.buffer, ab.buffer, 100);
             // session.voices.push(v);
             // session.vocoders.push(v);
-            session.voices = [ab];
+            // session.voices = [ab];
+            session.voices.push(ab);
+            session.lyricToVoice[text] = ab;
+            // session.voicesSet = true;
         });
+
+        return true;
     },
 
     // playVoice: function(text, pitch) {
@@ -218,9 +284,13 @@ meSing.Session.prototype = {
                 // this.addVoice(text, midinote);
 
                 // if (text != "" || midinote != "") {
-                if (text != "") {
+                if (text !== "") {
                     // text = "(break)";
                     this.lyrics.push(text);
+                    if (midinote !== undefined && midinote.length > 0) {
+                        console.log("adding voice " + text + ", " + midinote);
+                        this.addVoice(text, midinote);
+                    }
                 }
                 texts.push(text);
                 notes.push(midinote);
@@ -229,7 +299,12 @@ meSing.Session.prototype = {
 
         console.log(texts.join(" "));
 
-        this.addVoice(texts.join(" "), notes[0]);
+        // var addVoiceSuccess = this.addVoice(texts.join(" "), notes[0]);
+        
+        // while (!addVoiceSuccess) {
+        //     console.log("trying again...");
+        //     addVoiceSuccess = this.addVoice(texts.join(" "), notes[0]);
+        // }
     },
 
     initDisplay: function() {
