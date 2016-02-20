@@ -44,6 +44,10 @@ meSing.cleanString = function(s) {
     return s.replace(/[^A-Za-z0-9\s]/g, "");
 }
 
+meSing.validInput = function(input) {
+    return (input !== undefined && input.length > 0);
+}
+
 
 /*
  * Session class
@@ -221,7 +225,7 @@ meSing.Session.prototype = {
 
             console.log(msg);
 
-            $("#voicesStatus").text(msg);
+            // $("#voicesStatus").text(msg);
             // session.voices.push(ab);
 
             // Voice
@@ -277,6 +281,41 @@ meSing.Session.prototype = {
     //     });        
     // },
 
+    // recursively create voices from lyrics
+    createVoicesFromLyrics: function(lyrics, i) {
+        // percentage complete
+        var percentage = ((i+1)/lyrics.length) * 100;
+        var lyric = lyrics[i];
+
+        // add voice with single lyric
+        if (this.addVoice(lyric.text, lyric.midinote, percentage)) {
+            var msg = "adding voice (\"" + lyric.text + "\", " + lyric.midinote + "); " + percentage + "% complete";
+
+            console.log(msg);
+
+            // update display
+            $("#voicesStatus").text(msg);
+        }
+        else {
+            msgOnFinished = "meSing voices not all loaded properly; please wait for meSpeak config to load and call setVoices() again";
+        }
+
+        // do the next voice
+        if (i < lyrics.length-1) {
+            var session = this;
+            window.setTimeout(function() {
+                session.createVoicesFromLyrics(lyrics, i+1);
+            }, 1);
+        }
+        else {
+            $("#voicesStatus").text(i + " voices loaded; 100% complete and ready to sing!");
+        }
+
+        // console.log(percentage);
+        // $("#voicesStatus").text("adding voices; " + percentage + "% complete");
+    },
+
+    // setup lyrics and voices
     setVoices: function() {
         var numSteps = meSing.defaults.steps.length;
         var numMeasures = meSing.defaults.numMeasures;
@@ -287,7 +326,6 @@ meSing.Session.prototype = {
         var msgOnFinished = "done adding voices; 100% complete";
 
 
-        // todo: refactor this with map()
         for (var i=0; i<numMeasures; i++) {
             for (var j=0; j<numSteps; j++) {
                 var id = "#measure"+i+"step"+j;
@@ -295,41 +333,66 @@ meSing.Session.prototype = {
                 var midinote = $(id + " > .midinoteinput").val();
                 // this.addVoice(text, midinote);
 
-                // if (text != "" || midinote != "") {
-                if (text !== "") {
+                if (meSing.validInput(text) && meSing.validInput(midinote)) {
                     // text = "(break)";
-                    this.lyrics.push(text);
-                    if (midinote !== undefined && midinote.length > 0) {
-                        // percentage complete
-                        var measurePercentage = i / numMeasures;
-                        var stepPercentage = (j / numSteps) / numMeasures;
-                        var percentage = (measurePercentage + stepPercentage) * 100;
-
-                        // add voice with single lyric
-                        if (this.addVoice(text, midinote, percentage)) {
-                            var msg = "adding voice (" + text + ", " + midinote + "); " + percentage + "% complete";
-
-                            console.log(msg);
-                            
-                            // window.setTimeout(function() {
-                            //     console.log(msg);
-                            //     $("#voicesStatus").text(msg);
-                            // }, 1);
-
-                            $("#voicesStatus").text(msg);
-                            // console.log($("#voicesStatus").text());
-                        }
-                        else {
-                            msgOnFinished = "meSing voices not all loaded properly; please wait for meSpeak config to load and call setVoices() again";
-                        }
-                        // console.log(percentage);
-                        // $("#voicesStatus").text("adding voices; " + percentage + "% complete");
-                    }
+                    this.lyrics.push({
+                        text: text,
+                        midinote: midinote
+                    });
                 }
                 texts.push(text);
                 notes.push(midinote);
             }
         }
+
+        // this.lyricToVoice =  this.createVoicesFromLyrics(this.lyrics, 0);
+        this.createVoicesFromLyrics(this.lyrics, 0);
+
+
+        // original giant for-loop version (working but ugly and monstrous)
+        // todo: refactor this with map()
+        // for (var i=0; i<numMeasures; i++) {
+        //     for (var j=0; j<numSteps; j++) {
+        //         var id = "#measure"+i+"step"+j;
+        //         var text = $(id + " > .textinput").val();
+        //         var midinote = $(id + " > .midinoteinput").val();
+        //         // this.addVoice(text, midinote);
+
+        //         // if (text != "" || midinote != "") {
+        //         if (text !== "") {
+        //             // text = "(break)";
+        //             this.lyrics.push(text);
+        //             if (midinote !== undefined && midinote.length > 0) {
+        //                 // percentage complete
+        //                 var measurePercentage = i / numMeasures;
+        //                 var stepPercentage = (j / numSteps) / numMeasures;
+        //                 var percentage = (measurePercentage + stepPercentage) * 100;
+
+        //                 // add voice with single lyric
+        //                 if (this.addVoice(text, midinote, percentage)) {
+        //                     var msg = "adding voice (" + text + ", " + midinote + "); " + percentage + "% complete";
+
+        //                     console.log(msg);
+
+        //                     // window.setTimeout(function() {
+        //                     //     console.log(msg);
+        //                     //     $("#voicesStatus").text(msg);
+        //                     // }, 1);
+
+        //                     $("#voicesStatus").text(msg);
+        //                     // console.log($("#voicesStatus").text());
+        //                 }
+        //                 else {
+        //                     msgOnFinished = "meSing voices not all loaded properly; please wait for meSpeak config to load and call setVoices() again";
+        //                 }
+        //                 // console.log(percentage);
+        //                 // $("#voicesStatus").text("adding voices; " + percentage + "% complete");
+        //             }
+        //         }
+        //         texts.push(text);
+        //         notes.push(midinote);
+        //     }
+        // }
 
         console.log(msgOnFinished);
         console.log(texts.join(" "));
@@ -343,6 +406,7 @@ meSing.Session.prototype = {
         // }
     },
 
+    // initialize the index display with kyle adams-style grid
     initDisplay: function() {
         var steps = meSing.defaults.steps;
         var numMeasures = meSing.defaults.numMeasures;
