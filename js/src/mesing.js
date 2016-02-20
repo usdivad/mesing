@@ -24,8 +24,8 @@ meSing.defaults = {
                 "62","","59","60","62","","64","","60","60","60","60","","","","",],
     wordgap: 50,
     // speed: 40 * 6 / 2,
-    speed: 180,
-    // speed: 320,
+    // speed: 180,
+    speed: 320,
 };
 
 meSing.midiToHz = function(midi) {
@@ -67,6 +67,7 @@ meSing.Session = function() {
     this.lyricToVoice = {};
     this.lyricsCount = 0;
     this.voiceData = "";
+    this.voiceBuffer = null;
     this.grid = $("#msDisplay"); //todo: else create element
     this.metro = T("interval",
                     {interval: "BPM" + meSing.defaults.bpm + 
@@ -128,7 +129,7 @@ meSing.Session = function() {
                                 // textBuffer.copyToChannel(newSegment, 0, 0);
 
                                 // reference to ind voice
-                                textBuffer.copyToChannel(session.lyricToVoice[text].buffer.getChannelData(0).slice(0,durationSamples), 0, 0);
+                                // textBuffer.copyToChannel(session.lyricToVoice[text].buffer.getChannelData(0).slice(0,durationSamples), 0, 0);
                                 
                                 // voice/vocoder options
 
@@ -138,17 +139,19 @@ meSing.Session = function() {
 
                                 // 2. change pitch of existing vocoder (or create new if non-existent)
                                 //    (requires buffer to be precomposed?)
-                                if (!this.voice) { // do better checking
-                                    this.voice = vocoder(session.ctx, textBuffer, textBuffer, freq);
+                                if (!session.voice /*|| stepNum == 0*/) { // do better checking. stepNum == 0 is interesting for polyphony but gets a bit crazy
+                                    // this.voice = vocoder(session.ctx, textBuffer, textBuffer, freq);
+                                    var buf = session.voiceBuffer;
+                                    session.voice = vocoder(session.ctx, buf, buf, freq); // this should go in a separate loop since it doesn't necessarily rely on valid text/midinote
                                     console.log("new voice");
                                 }
                                 else {
-                                    this.voice.oscillatorNode.frequency.value = freq;
+                                    session.voice.oscillatorNode.frequency.value = freq;
                                     console.log("set voice freq to " + freq);
                                 }
 
                                 // session.vocoders.push(voice);
-                                console.log(this.voice);
+                                console.log(session.voice);
                             }
                             session.lyricsCount++;
                         }
@@ -181,6 +184,10 @@ meSing.Session = function() {
 };
 meSing.Session.prototype = {
     constructor: meSing.Session,
+
+    playVoiceBuffer: function() {
+        this.voice = vocoder(this.ctx, this.voiceBuffer, this.voiceBuffer, 50); 
+    },
 
     addVoice: function(text, pitch, percentage) {
         if (!meSpeak.isConfigLoaded()) {
@@ -288,14 +295,26 @@ meSing.Session.prototype = {
     createPassageFromVoices: function(voices) { 
         var numMeasures = meSing.defaults.numMeasures;
         var numSteps = meSing.defaults.steps.length;
+        var sampleRate = this.ctx.sampleRate;
         var lyricsAll = [];
-        var duration = meSing.bpmToMs(meSing.defaults.bpm);
-        var durationSamples = Math.floor(duration * this.ctx.sampleRate);
+        var durationPerBeat = meSing.bpmToMs(meSing.defaults.bpm);
+        var duration = durationPerBeat / (numSteps*numMeasures); // per step
+        // duration = 100;
+        console.log("durationPerBeat: " + durationPerBeat + ", durationPerSTep: " + duration);
+        var durationSamples = Math.floor(duration * sampleRate);
         var totalSampleSize = durationSamples * numMeasures;
+        // var frameCount = this.ctx.sampleRate;
+        var numChannels = 2;
+        var audioBuffer = this.ctx.createBuffer(numChannels, totalSampleSize, sampleRate);
+        var audioData = new Float32Array();
+
         console.log("total sample size: " + totalSampleSize);
         // console.log(duration * numMeasures);
 
         // duration, bpm; add based on spaces
+
+        // testing reassignment
+        // voices["Some"] = voices["-by"];
 
         // populate lyrics (ALL) first
         for (var i=0; i<numMeasures; i++) {
@@ -314,16 +333,28 @@ meSing.Session.prototype = {
             if (meSing.validInput(lyric)) {
                 var voice = voices[lyric];
                 console.log(lyric + " -> " + voice);
+                // console.log(voice);
 
                 // var offset = (i/numMeasures) + (j/(numSteps*numMeasures));
                 var offsetBeats = i + (j/numSteps);
                 var offsetSamples = (offsetBeats/numMeasures) * durationSamples;
                 console.log("offsetBeats:" + offsetBeats + ", offsetSamples:" + offsetSamples);
-            }
-            else {
+
+                audioData = meSing.concatFloat32Arrays(audioData, voice.buffer.getChannelData(0).slice(0, durationSamples));
+                console.log(audioData.length);
 
             }
+            else {
+                audioData = meSing.concatFloat32Arrays(audioData, new Float32Array(sampleRate/3)); // hacky hard-coded; should work with durationSamples..
+            }
         }
+
+        // finally, hook it up to the context
+        // this.voiceData = audioData;
+        audioBuffer.copyToChannel(audioData, 0, 0);
+        this.voiceBuffer = audioBuffer;
+
+        console.log("done constructing passage from voices!");
 
     },
 
@@ -374,7 +405,8 @@ meSing.Session.prototype = {
         this.lyrics = [];
         var msgOnFinished = "done adding voices; 100% complete";
 
-
+        // new recursive method
+        // setup lyrics
         for (var i=0; i<numMeasures; i++) {
             for (var j=0; j<numSteps; j++) {
                 var id = "#measure"+i+"step"+j;
@@ -394,6 +426,8 @@ meSing.Session.prototype = {
             }
         }
 
+        
+        // create voices and start the chain of events
         // this.lyricToVoice =  this.createVoicesFromLyrics(this.lyrics, 0);
         this.createVoicesFromLyrics(this.lyrics, 0);
 

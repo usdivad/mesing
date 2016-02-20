@@ -18,6 +18,7 @@ window.onload = function() {
     $("#stopBtn").on("click", function(){
         session.metro.stop();
         session.lyricsCount = 0;
+        session.voice = null;
     });
     $("#setVoicesBtn").on("click", function(){
         session.setVoices();
