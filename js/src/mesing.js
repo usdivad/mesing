@@ -42,10 +42,14 @@ meSing.concatFloat32Arrays = function(a1, a2) {
 
 meSing.cleanString = function(s) {
     return s.replace(/[^A-Za-z0-9\s]/g, "");
-}
+};
 
 meSing.validInput = function(input) {
     return (input !== undefined && input.length > 0);
+};
+
+meSing.bpmToMs = function(bpm) {
+    return (60/bpm) * 1000;
 }
 
 
@@ -88,7 +92,7 @@ meSing.Session = function() {
                         console.log("offset: " + offset + ", text: " + text);
                         
                         // audio
-                        if (text !== undefined && text !== "") { 
+                        if (meSing.validInput(text)) { 
                             // talking voice
                             // var voice = session.ctx.createBufferSource();  
                             // voice.buffer = session.voiceData;
@@ -97,7 +101,7 @@ meSing.Session = function() {
 
                             // singing voice!
                             // TODO: make it one single vocoder and just alter the osc freq
-                            if (midinote !== undefined && midinote !== "" /*&& stepNum==0*/) {
+                            if (meSing.validInput(midinote) /*&& stepNum==0*/) {
                                 // var voice;
 
                                 // var speakingVoice = this.addVoice(text, 50);
@@ -281,14 +285,64 @@ meSing.Session.prototype = {
     //     });        
     // },
 
+    createPassageFromVoices: function(voices) { 
+        var numMeasures = meSing.defaults.numMeasures;
+        var numSteps = meSing.defaults.steps.length;
+        var lyricsAll = [];
+        var duration = meSing.bpmToMs(meSing.defaults.bpm);
+        var durationSamples = Math.floor(duration * this.ctx.sampleRate);
+        var totalSampleSize = durationSamples * numMeasures;
+        console.log("total sample size: " + totalSampleSize);
+        // console.log(duration * numMeasures);
+
+        // duration, bpm; add based on spaces
+
+        // populate lyrics (ALL) first
+        for (var i=0; i<numMeasures; i++) {
+            for (j=0; j<numSteps; j++) {
+                var id = "#measure"+i+"step"+j;
+                var text = $(id + " > .textinput").val();
+                var midinote = $(id + " > .midinoteinput").val();
+
+                lyricsAll.push(text);
+            }
+        }
+
+        // create the passage
+        for (var i=0; i<lyricsAll.length; i++) {
+            var lyric = lyricsAll[i];
+            if (meSing.validInput(lyric)) {
+                var voice = voices[lyric];
+                console.log(lyric + " -> " + voice);
+
+                // var offset = (i/numMeasures) + (j/(numSteps*numMeasures));
+                var offsetBeats = i + (j/numSteps);
+                var offsetSamples = (offsetBeats/numMeasures) * durationSamples;
+                console.log("offsetBeats:" + offsetBeats + ", offsetSamples:" + offsetSamples);
+            }
+            else {
+
+            }
+        }
+
+    },
+
     // recursively create voices from lyrics
     createVoicesFromLyrics: function(lyrics, i) {
+
+        // check if we've bottomed out
+        if (i > lyrics.length) {
+            $("#voicesStatus").text(lyrics.length + " voices loaded; 100% complete and ready to sing!");
+            this.createPassageFromVoices(this.lyricToVoice);
+            return;
+        }
+
         // percentage complete
         var percentage = ((i+1)/lyrics.length) * 100;
         var lyric = lyrics[i];
 
         // add voice with single lyric
-        if (this.addVoice(lyric.text, lyric.midinote, percentage)) {
+        if (lyric && this.addVoice(lyric.text, lyric.midinote, percentage)) {
             var msg = "adding voice (\"" + lyric.text + "\", " + lyric.midinote + "); " + percentage + "% complete";
 
             console.log(msg);
@@ -301,15 +355,10 @@ meSing.Session.prototype = {
         }
 
         // do the next voice
-        if (i < lyrics.length-1) {
-            var session = this;
-            window.setTimeout(function() {
-                session.createVoicesFromLyrics(lyrics, i+1);
-            }, 1);
-        }
-        else {
-            $("#voicesStatus").text(i + " voices loaded; 100% complete and ready to sing!");
-        }
+        var session = this;
+        window.setTimeout(function() {
+            session.createVoicesFromLyrics(lyrics, i+1);
+        }, 1);
 
         // console.log(percentage);
         // $("#voicesStatus").text("adding voices; " + percentage + "% complete");
