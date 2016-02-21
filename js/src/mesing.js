@@ -59,14 +59,10 @@ meSing.bpmToMs = function(bpm) {
 meSing.Session = function() {
     var session = this;
     this.ctx = new AudioContext();
-    // this.vocoder = vocoder(this.ctx);
-    this.voices = [];
-    this.voice = "";
-    this.vocoders = [];
+    this.voice = null;
     this.lyrics = [];
     this.lyricToVoice = {};
     this.lyricsCount = 0;
-    this.voiceData = "";
     this.voiceBuffer = null;
     this.grid = $("#msDisplay"); //todo: else create element
     this.metro = T("interval",
@@ -84,77 +80,35 @@ meSing.Session = function() {
                         var duration = 0.8;
                         console.log(midinote);
 
-                        // trying different offset calculations
-                        // var offset = ((measureNum*10) + stepNum) * (meSing.defaults.wordgap/100) * (meSing.defaults.speed / 60);
-                        // var offset = (meSing.defaults.speed / 60) * ((session.lyricsCount % session.lyrics.length) * meSing.defaults.wordgap/100);
-                        var offset = (session.lyricsCount % session.lyrics.length) * 0.735; // hacky
-                        offset = (0 % session.lyrics.length) * 0.735; // testing with only the first syllable
-                        // var offset = ((1/(meSing.defaults.speed / 60)) + (meSing.defaults.wordgap/1000)) * (session.lyricsCount % session.lyrics.length);
-                        console.log("offset: " + offset + ", text: " + text);
                         
-                        // audio
-                        if (meSing.validInput(text)) { 
-                            // talking voice
-                            // var voice = session.ctx.createBufferSource();  
-                            // voice.buffer = session.voiceData;
-                            // voice.connect(session.ctx.destination);
-                            // voice.start(session.ctx.currentTime, offset, duration);
-
-                            // singing voice!
-                            // TODO: make it one single vocoder and just alter the osc freq
-                            if (meSing.validInput(midinote) /*&& stepNum==0*/) {
-                                // var voice;
-
-                                // var speakingVoice = this.addVoice(text, 50);
-
-                                var freq = meSing.midiToHz(midinote - 24);
-                                
-                                // var offsetSamples = Math.floor(offset * session.ctx.sampleRate);
-                                // var durationSamples = Math.floor(duration * session.ctx.sampleRate);
-                                // var numChannels = 2;
-                                // var frameCount = session.ctx.sampleRate;
-                                // var textBuffer = session.ctx.createBuffer(numChannels, frameCount, session.ctx.sampleRate);
-                                // console.log("offsetSamples:" + offsetSamples + ", durationSamples:" + durationSamples + ", freq:" + freq);
-                                
-                                // buffer options
-
-                                // testing slice of whole sample using offset + duration
-                                // textBuffer.copyToChannel(session.voiceData.getChannelData(0).slice(offsetSamples, offsetSamples+durationSamples), 0, 0);
-
-                                // testing whole sample
-                                // textBuffer = session.voiceData;
-
-                                // testing concatenation
-                                // var segment = session.voiceData.getChannelData(0).slice(offsetSamples, offsetSamples+durationSamples);
-                                // var newSegment = meSing.concatFloat32Arrays(segment, segment);
-                                // textBuffer.copyToChannel(newSegment, 0, 0);
-
-                                // reference to ind voice
-                                // textBuffer.copyToChannel(session.lyricToVoice[text].buffer.getChannelData(0).slice(0,durationSamples), 0, 0);
-                                
-                                // voice/vocoder options
-
-                                // // 1. create new vocoder for each buffer segment (inefficient)
-                                // delete this.voice;
-                                // this.voice = vocoder(session.ctx, textBuffer, textBuffer, freq);
-
-                                // 2. change pitch of existing vocoder (or create new if non-existent)
-                                //    (requires buffer to be precomposed?)
-                                if (!session.voice /*|| stepNum == 0*/) { // do better checking. stepNum == 0 is interesting for polyphony but gets a bit crazy
-                                    // this.voice = vocoder(session.ctx, textBuffer, textBuffer, freq);
-                                    var buf = session.voiceBuffer;
-                                    session.voice = vocoder(session.ctx, buf, buf, freq); // this should go in a separate loop since it doesn't necessarily rely on valid text/midinote
-                                    console.log("new voice");
-                                }
-                                else {
-                                    session.voice.oscillatorNode.frequency.value = freq;
-                                    console.log("set voice freq to " + freq);
-                                }
-
-                                // session.vocoders.push(voice);
-                                console.log(session.voice);
-                            }
+                        // increment lyrics count for offset testing (not needed now)
+                        if (meSing.validInput(text)) {
                             session.lyricsCount++;
+                        }
+
+                        // create new voice (vocoder) if need be
+                        if (!session.voice || (measureNum==0 && stepNum==0)) {
+                            // this.voice = vocoder(session.ctx, textBuffer, textBuffer, freq);
+                            var buf = session.voiceBuffer;
+                            var freq = 60; // default
+
+                            // if (meSing.validInput(midinote)) {
+                            //     freq = meSing.midiToHz(midinote);
+                            // }
+
+                            session.voice = vocoder(session.ctx, buf, buf, freq);
+                            console.log("new voice");
+                        }
+
+                        // change pitch of existing vocoder
+                        if (meSing.validInput(midinote)) {
+                            var midiNoteAdj = midinote - 24; // send pitch down by two octaves
+                            var freq = meSing.midiToHz(midiNoteAdj);
+
+                            session.voice.oscillatorNode.frequency.value = freq;
+                            console.log("set voice freq to " + freq);
+
+                            // console.log(session.voice);
                         }
                        
                         // display
@@ -186,10 +140,7 @@ meSing.Session = function() {
 meSing.Session.prototype = {
     constructor: meSing.Session,
 
-    playVoiceBuffer: function() {
-        this.voice = vocoder(this.ctx, this.voiceBuffer, this.voiceBuffer, 50); 
-    },
-
+    // add a voice, i.e. syllable with note associated, to the session
     addVoice: function(text, pitch, percentage) {
         if (!meSpeak.isConfigLoaded()) {
             var msg = "meSpeak config not yet loaded; please wait and try to set voices again";
@@ -208,7 +159,7 @@ meSing.Session.prototype = {
         var ab = this.ctx.createBufferSource();
         ab.id = Math.floor(Math.random()*100000000);
 
-        // cleanup text
+        // clean up text
         var cleanText = meSing.cleanString(text);
         console.log("mespeak params: " + cleanText + ", " + pitch);
 
@@ -221,78 +172,26 @@ meSing.Session.prototype = {
         });
 
         // decode speech data
-        var v;
         var session = this;
         this.ctx.decodeAudioData(speechData, function(decodedData) {
-            // var msg = "voices set to " + ab.id + " and ready to go!";
-            var msg = "voices for " + (Object.keys(session.lyricToVoice).length+1) + " lyrics set and ready to go!";
+            // add decoded data to buffer and connect to audiocontext
             ab.buffer = decodedData;
-            session.voiceData = decodedData;
-            
             ab.connect(session.ctx.destination);
-            
-            // ab.loop = true;
-            // ab.start();
             console.log(ab);
 
-            console.log(msg);
-
-            // $("#voicesStatus").text(msg);
-            // session.voices.push(ab);
-
-            // Voice
-            // v = vocoder(session.ctx, ab.buffer, ab.buffer, 100);
-            // session.voices.push(v);
-            // session.vocoders.push(v);
-            // session.voices = [ab];
-            session.voices.push(ab);
+            // add audio buffer to voices obj
             session.lyricToVoice[text] = ab;
             // session.voicesSet = true;
+
+            console.log("voices for " + (Object.keys(session.lyricToVoice).length+1) + " lyrics set and ready to go!");
         });
-
-
 
         return true;
     },
 
-    // playVoice: function(text, pitch) {
-    //     if (!meSpeak.isConfigLoaded()) {
-    //         console.log("config not yet loaded; please wait");
-    //         return;
-    //     }
-    //     if (pitch === undefined || pitch.length == 0) {
-    //         // pitch = Math.random()*100;
-    //         return [];
-    //     }
-    //     if (text === undefined || text.length == 0) {
-    //         return [];
-    //     }
-    //     var ab = this.ctx.createBufferSource();
-    //     ab.id = Math.floor(Math.random()*100000000);
-    //     var speechData = meSpeak.speak(text, {
-    //         pitch: pitch,
-    //         rawdata: "ArrayBuffer",
-    //     });
-    //     var v;
-    //     var session = this;
-    //     this.ctx.decodeAudioData(speechData, function(decodedData) {
-    //         ab.buffer = decodedData;
-            
-    //         ab.connect(session.ctx.destination);
-            
-    //         // ab.loop = true;
-    //         ab.start();
-    //         console.log(ab);
-
-    //         console.log("just created " + ab.id);
-    //         session.voices.push(ab);
-
-    //         // Voice
-    //         // v = vocoder(session.ctx, ab, ab);
-    //         // this.voices.push(v);
-    //     });        
-    // },
-
+    // create a single audio buffer containing the entire passage, i.e.
+    // all the vocalized lyrics in the session, in correct rhythm according
+    // to bpm and steps/measures dictated
     createPassageFromVoices: function(voices) { 
         var numMeasures = meSing.defaults.numMeasures;
         var numSteps = meSing.defaults.steps.length;
@@ -315,8 +214,6 @@ meSing.Session.prototype = {
         // hard-coded testing
         // durationSamples = sampleRate/3;
 
-        // duration, bpm; add based on spaces
-
         // testing reassignment
         // voices["Some"] = voices["-by"];
 
@@ -331,18 +228,19 @@ meSing.Session.prototype = {
             }
         }
 
-        // create the passage
+        // create the passage by iterating through lyrics
         for (var i=0; i<lyricsAll.length; i++) {
             var lyric = lyricsAll[i];
-            if (meSing.validInput(lyric)) {
+            if (meSing.validInput(lyric)) { // add the current voice buffer data to audio buffer
                 var voice = voices[lyric];
                 console.log(lyric + " -> " + voice);
                 // console.log(voice);
 
-                // var offset = (i/numMeasures) + (j/(numSteps*numMeasures));
-                var offsetBeats = i + (j/numSteps);
-                var offsetSamples = (offsetBeats/numMeasures) * durationSamples;
-                console.log("offsetBeats:" + offsetBeats + ", offsetSamples:" + offsetSamples);
+                // // calculating offset samples (we don't need this now)
+                // // var offset = (i/numMeasures) + (j/(numSteps*numMeasures));
+                // var offsetBeats = i + (j/numSteps);
+                // var offsetSamples = (offsetBeats/numMeasures) * durationSamples;
+                // console.log("offsetBeats:" + offsetBeats + ", offsetSamples:" + offsetSamples);
 
                 var voiceBufferData = voice.buffer.getChannelData(0); //.slice(0, durationSamples);
                 var currentVoiceData = new Float32Array(durationSamples).map(function(n, i) {
@@ -358,13 +256,12 @@ meSing.Session.prototype = {
                 console.log("currentVoiceData.length:" + currentVoiceData.length + ", durationSamples:" + durationSamples);
 
             }
-            else {
+            else { // add blank space baby
                 audioData = meSing.concatFloat32Arrays(audioData, new Float32Array(durationSamples));
             }
         }
 
         // finally, hook it up to the context
-        // this.voiceData = audioData;
         audioBuffer.copyToChannel(audioData, 0, 0);
         this.voiceBuffer = audioBuffer;
 
@@ -446,61 +343,8 @@ meSing.Session.prototype = {
         this.createVoicesFromLyrics(this.lyrics, 0);
 
 
-        // original giant for-loop version (working but ugly and monstrous)
-        // todo: refactor this with map()
-        // for (var i=0; i<numMeasures; i++) {
-        //     for (var j=0; j<numSteps; j++) {
-        //         var id = "#measure"+i+"step"+j;
-        //         var text = $(id + " > .textinput").val();
-        //         var midinote = $(id + " > .midinoteinput").val();
-        //         // this.addVoice(text, midinote);
-
-        //         // if (text != "" || midinote != "") {
-        //         if (text !== "") {
-        //             // text = "(break)";
-        //             this.lyrics.push(text);
-        //             if (midinote !== undefined && midinote.length > 0) {
-        //                 // percentage complete
-        //                 var measurePercentage = i / numMeasures;
-        //                 var stepPercentage = (j / numSteps) / numMeasures;
-        //                 var percentage = (measurePercentage + stepPercentage) * 100;
-
-        //                 // add voice with single lyric
-        //                 if (this.addVoice(text, midinote, percentage)) {
-        //                     var msg = "adding voice (" + text + ", " + midinote + "); " + percentage + "% complete";
-
-        //                     console.log(msg);
-
-        //                     // window.setTimeout(function() {
-        //                     //     console.log(msg);
-        //                     //     $("#voicesStatus").text(msg);
-        //                     // }, 1);
-
-        //                     $("#voicesStatus").text(msg);
-        //                     // console.log($("#voicesStatus").text());
-        //                 }
-        //                 else {
-        //                     msgOnFinished = "meSing voices not all loaded properly; please wait for meSpeak config to load and call setVoices() again";
-        //                 }
-        //                 // console.log(percentage);
-        //                 // $("#voicesStatus").text("adding voices; " + percentage + "% complete");
-        //             }
-        //         }
-        //         texts.push(text);
-        //         notes.push(midinote);
-        //     }
-        // }
-
         console.log(msgOnFinished);
         console.log(texts.join(" "));
-
-        // // add a single voice with the entire phrase
-        // var addVoiceSuccess = this.addVoice(texts.join(" "), notes[0]);
-        
-        // while (!addVoiceSuccess) {
-        //     console.log("trying again...");
-        //     addVoiceSuccess = this.addVoice(texts.join(" "), notes[0]);
-        // }
     },
 
     // initialize the index display with kyle adams-style grid
@@ -537,9 +381,3 @@ meSing.Session.prototype = {
 meSing.Voice = function(text, midinote) {
 
 }
-
-/*
-if we do it syllable by syllable...
-make a Voice class that when played will .start() and duplicate the buffer node
-
-*/

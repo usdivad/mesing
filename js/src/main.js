@@ -8,7 +8,7 @@ window.onload = function() {
 
     $("#startBtn").on("click", function(){
         // session.setVoices();
-        if (session.voices.length > 0) {
+        if (Object.keys(session.lyricToVoice).length > 0) {
             session.metro.start(); 
         }
         else {
@@ -18,6 +18,7 @@ window.onload = function() {
     $("#stopBtn").on("click", function(){
         session.metro.stop();
         session.lyricsCount = 0;
+        session.voice.modulatorGain.disconnect(); // not the best way to do this
         session.voice = null;
     });
     $("#setVoicesBtn").on("click", function(){
