@@ -269,6 +269,10 @@ meSing.Session.prototype = {
         audioBuffer.copyToChannel(audioData, 0, 0);
         this.voiceBuffer = audioBuffer;
 
+        // input
+        $("#startBtn").prop("disabled", false);
+        $("#stopBtn").prop("disabled", false);
+
         console.log("done constructing passage from voices!");
 
     },
@@ -289,7 +293,7 @@ meSing.Session.prototype = {
 
         // add voice with single lyric
         if (lyric && this.addVoice(lyric.text, lyric.midinote, percentage)) {
-            var msg = "adding voice (\"" + lyric.text + "\", " + lyric.midinote + "); " + percentage + "% complete";
+            var msg = "adding voice (\"" + lyric.text + "\", " + lyric.midinote + "); " + percentage + "% complete, please wait...";
 
             console.log(msg);
 

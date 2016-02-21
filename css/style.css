@@ -24,3 +24,16 @@ body {
 .playing {
     background-color: #FF6200;
 }
+
+a, a:hover, a:visited {
+  color: black;
+}
+
+h2 {
+  margin-bottom: -15px;
+}
+
+subtitle {
+  font-size: 80%;
+  margin-bottom: 20px;
+}

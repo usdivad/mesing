@@ -14,14 +14,23 @@ window.onload = function() {
         else {
             $("#voicesStatus").text("please set voices before starting audio");
         }
+
+        $("#startBtn").prop("disabled", true);
     });
     $("#stopBtn").on("click", function(){
         session.metro.stop();
         session.lyricsCount = 0;
-        session.voice.modulatorGain.disconnect(); // not the best way to do this
+        if (session.voice) {
+            session.voice.modulatorGain.disconnect(); // not the best way to do this
+        }
         session.voice = null;
+
+        $("#startBtn").prop("disabled", false);
     });
     $("#setVoicesBtn").on("click", function(){
         session.setVoices();
+        
+        $("#startBtn").prop("disabled", true);
+        $("#stopBtn").prop("disabled", true);
     });
 };
