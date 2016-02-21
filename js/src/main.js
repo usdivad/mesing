@@ -2,7 +2,7 @@ var session;
 
 window.onload = function() {
     console.log("asdf");
-    session = new meSing.Session();
+    session = new meSing.Session(meSing.defaults);
     session.initDisplay();
     // session.setVoices();
 

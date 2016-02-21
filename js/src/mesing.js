@@ -56,8 +56,12 @@ meSing.bpmToMs = function(bpm) {
 /*
  * Session class
  */
-meSing.Session = function() {
+meSing.Session = function(params) {
     var session = this;
+    this.params = params;
+    if (this.params === undefined) {
+        this.params = meSing.defaults;
+    }
     this.ctx = new AudioContext();
     this.voice = null;
     this.lyrics = [];
@@ -66,12 +70,12 @@ meSing.Session = function() {
     this.voiceBuffer = null;
     this.grid = $("#msDisplay"); //todo: else create element
     this.metro = T("interval",
-                    {interval: "BPM" + meSing.defaults.bpm + 
-                               " L" + meSing.defaults.steps.length
+                    {interval: "BPM" + session.params.bpm + 
+                               " L" + session.params.steps.length
                     },
                     function(count) {
-                        var measureNum = Math.floor(count / meSing.defaults.steps.length) % meSing.defaults.numMeasures;
-                        var stepNum = count % meSing.defaults.steps.length;
+                        var measureNum = Math.floor(count / session.params.steps.length) % session.params.numMeasures;
+                        var stepNum = count % session.params.steps.length;
                         var stepId = "measure" + measureNum + "step" + stepNum;
                         var text = $("#" + stepId + " > .textinput").val();
                         var midinote = $("#" + stepId + " > .midinoteinput").val();
@@ -167,8 +171,8 @@ meSing.Session.prototype = {
         var speechData = meSpeak.speak(cleanText, {
             pitch: pitch,
             rawdata: "ArrayBuffer",
-            wordgap: meSing.defaults.wordgap,
-            speed: meSing.defaults.speed,
+            wordgap: this.params.wordgap,
+            speed: this.params.speed,
         });
 
         // decode speech data
@@ -193,11 +197,11 @@ meSing.Session.prototype = {
     // all the vocalized lyrics in the session, in correct rhythm according
     // to bpm and steps/measures dictated
     createPassageFromVoices: function(voices) { 
-        var numMeasures = meSing.defaults.numMeasures;
-        var numSteps = meSing.defaults.steps.length;
+        var numMeasures = this.params.numMeasures;
+        var numSteps = this.params.steps.length;
         var sampleRate = this.ctx.sampleRate;
         var lyricsAll = [];
-        var durationPerBeat = meSing.bpmToMs(meSing.defaults.bpm);
+        var durationPerBeat = meSing.bpmToMs(this.params.bpm);
         var duration = durationPerBeat / (numMeasures); // per step
         // duration = 100;
         var durationSamples = Math.floor((duration/1000) * sampleRate);
@@ -308,8 +312,8 @@ meSing.Session.prototype = {
 
     // setup lyrics and voices
     setVoices: function() {
-        var numSteps = meSing.defaults.steps.length;
-        var numMeasures = meSing.defaults.numMeasures;
+        var numSteps = this.params.steps.length;
+        var numMeasures = this.params.numMeasures;
         var texts = [];
         var notes = [];
         this.voices = []; // garbage coll?
@@ -349,11 +353,11 @@ meSing.Session.prototype = {
 
     // initialize the index display with kyle adams-style grid
     initDisplay: function() {
-        var steps = meSing.defaults.steps;
-        var numMeasures = meSing.defaults.numMeasures;
+        var steps = this.params.steps;
+        var numMeasures = this.params.numMeasures;
         var widthScale = 90; // i.e. scale to x%
-        var textinput = meSing.defaults.textinput;
-        var midinoteinput = meSing.defaults.midinoteinput;
+        var textinput = this.params.textinput;
+        var midinoteinput = this.params.midinoteinput;
 
         for (var i=0; i<steps.length; i++) {
             var col = $("<div class='col-a' id='label" + i + "'><strong>" + steps[i] + "</strong></div>");
