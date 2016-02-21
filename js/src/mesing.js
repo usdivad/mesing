@@ -3,7 +3,7 @@ var meSing = meSing || {};
 meSing.defaults = {
     steps: "1e&a2e&a3e&a4e&a",
     numMeasures: 4,
-    bpm: 40,
+    bpm: 60,
     // textinput: ["Row","","","","row","","","","row","","","your","boat","","","",
     //             "gent-","","","-lee","down","","","the","stream","","","","","","","",
     //             "Merr-","","-il-","-lee","Merr-","","-il-","-lee","Merr-","","-il-","-lee","Merr-","","-il-","-lee",
@@ -24,7 +24,7 @@ meSing.defaults = {
                 "62","","59","60","62","","64","","60","60","60","60","","","","",],
     wordgap: 50,
     // speed: 40 * 6 / 2,
-    // speed: 180,
+    // speed: 200,
     speed: 320,
 };
 
@@ -108,12 +108,13 @@ meSing.Session = function() {
                                 // var speakingVoice = this.addVoice(text, 50);
 
                                 var freq = meSing.midiToHz(midinote - 24);
-                                var offsetSamples = Math.floor(offset * session.ctx.sampleRate);
-                                var durationSamples = Math.floor(duration * session.ctx.sampleRate);
-                                var numChannels = 2;
-                                var frameCount = session.ctx.sampleRate;
-                                var textBuffer = session.ctx.createBuffer(numChannels, frameCount, session.ctx.sampleRate);
-                                console.log("offsetSamples:" + offsetSamples + ", durationSamples:" + durationSamples + ", freq:" + freq);
+                                
+                                // var offsetSamples = Math.floor(offset * session.ctx.sampleRate);
+                                // var durationSamples = Math.floor(duration * session.ctx.sampleRate);
+                                // var numChannels = 2;
+                                // var frameCount = session.ctx.sampleRate;
+                                // var textBuffer = session.ctx.createBuffer(numChannels, frameCount, session.ctx.sampleRate);
+                                // console.log("offsetSamples:" + offsetSamples + ", durationSamples:" + durationSamples + ", freq:" + freq);
                                 
                                 // buffer options
 
@@ -298,18 +299,21 @@ meSing.Session.prototype = {
         var sampleRate = this.ctx.sampleRate;
         var lyricsAll = [];
         var durationPerBeat = meSing.bpmToMs(meSing.defaults.bpm);
-        var duration = durationPerBeat / (numSteps*numMeasures); // per step
+        var duration = durationPerBeat / (numMeasures); // per step
         // duration = 100;
-        console.log("durationPerBeat: " + durationPerBeat + ", durationPerSTep: " + duration);
-        var durationSamples = Math.floor(duration * sampleRate);
-        var totalSampleSize = durationSamples * numMeasures;
+        var durationSamples = Math.floor((duration/1000) * sampleRate);
+        var totalSampleSize = durationSamples * numMeasures * numSteps;
         // var frameCount = this.ctx.sampleRate;
         var numChannels = 2;
         var audioBuffer = this.ctx.createBuffer(numChannels, totalSampleSize, sampleRate);
         var audioData = new Float32Array();
 
+        console.log("durationPerBeat: " + durationPerBeat + ", durationPerSTep: " + duration + ", durationSamples:" + durationSamples);
         console.log("total sample size: " + totalSampleSize);
         // console.log(duration * numMeasures);
+
+        // hard-coded testing
+        // durationSamples = sampleRate/3;
 
         // duration, bpm; add based on spaces
 
@@ -340,12 +344,22 @@ meSing.Session.prototype = {
                 var offsetSamples = (offsetBeats/numMeasures) * durationSamples;
                 console.log("offsetBeats:" + offsetBeats + ", offsetSamples:" + offsetSamples);
 
-                audioData = meSing.concatFloat32Arrays(audioData, voice.buffer.getChannelData(0).slice(0, durationSamples));
-                console.log(audioData.length);
+                var voiceBufferData = voice.buffer.getChannelData(0); //.slice(0, durationSamples);
+                var currentVoiceData = new Float32Array(durationSamples).map(function(n, i) {
+                    if (i < voiceBufferData.length) {
+                        return voiceBufferData[i];
+                    }
+                    else {
+                        return 0;
+                    }
+                });
+
+                audioData = meSing.concatFloat32Arrays(audioData, currentVoiceData);
+                console.log("currentVoiceData.length:" + currentVoiceData.length + ", durationSamples:" + durationSamples);
 
             }
             else {
-                audioData = meSing.concatFloat32Arrays(audioData, new Float32Array(sampleRate/3)); // hacky hard-coded; should work with durationSamples..
+                audioData = meSing.concatFloat32Arrays(audioData, new Float32Array(durationSamples));
             }
         }
 
