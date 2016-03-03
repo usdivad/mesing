@@ -67,8 +67,11 @@ meSing.Session = function(params) {
     this.lyrics = [];
     this.lyricToVoice = {};
     this.lyricsCount = 0;
+    this.grid = [];
     this.voiceBuffer = null;
-    this.grid = $("#msDisplay"); //todo: else create element
+    this.metroFunction = function(stepNum, stepId) {
+        console.log("default metroFunction: stepNum=" + stepNum + ", stepId=" + stepId);
+    }
     this.metro = T("interval",
                     {interval: "BPM" + session.params.bpm + 
                                " L" + session.params.steps.length
@@ -77,10 +80,9 @@ meSing.Session = function(params) {
                         var measureNum = Math.floor(count / session.params.steps.length) % session.params.numMeasures;
                         var stepNum = count % session.params.steps.length;
                         var stepId = "measure" + measureNum + "step" + stepNum;
-                        var text = $("#" + stepId + " > .textinput").val();
-                        var midinote = $("#" + stepId + " > .midinoteinput").val();
-                        var labelId = "label" + stepNum;
-                        var inputs = $("#"+stepId+">input[type='text']");
+                        var musicData = session.grid[measureNum][stepNum];
+                        var text = musicData.text;
+                        var midinote = musicData.midinote;
                         var duration = 0.8;
                         console.log(midinote);
 
@@ -116,15 +118,7 @@ meSing.Session = function(params) {
                         }
                        
                         // display
-                        $(".col-a").removeClass("playing");
-                        $("input[type='text']").removeClass("playing");
-                        $("#" + labelId).addClass("playing");
-                        for (var i=0; i<inputs.length; i++) {
-                            var input = inputs[i];
-                            if (input !== undefined && input.value.length > 0) {
-                                inputs.addClass("playing");
-                            }
-                        }
+                        session.metroFunction(stepNum, stepId);
 
                         // console.log("m"+measureNum+"s"+stepNum);
                     }); // end metro
@@ -224,9 +218,9 @@ meSing.Session.prototype = {
         // populate lyrics (ALL) first
         for (var i=0; i<numMeasures; i++) {
             for (j=0; j<numSteps; j++) {
-                var id = "#measure"+i+"step"+j;
-                var text = $(id + " > .textinput").val();
-                var midinote = $(id + " > .midinoteinput").val();
+                var musicData = this.grid[i][j];
+                var text = musicData.text;
+                var midinote = musicData.midinote;
 
                 lyricsAll.push(text);
             }
@@ -328,9 +322,9 @@ meSing.Session.prototype = {
         // setup lyrics
         for (var i=0; i<numMeasures; i++) {
             for (var j=0; j<numSteps; j++) {
-                var id = "#measure"+i+"step"+j;
-                var text = $(id + " > .textinput").val();
-                var midinote = $(id + " > .midinoteinput").val();
+                var musicData = this.grid[i][j];
+                var text = musicData.text;
+                var midinote = musicData.midinote;
                 // this.addVoice(text, midinote);
 
                 if (meSing.validInput(text) && meSing.validInput(midinote)) {
@@ -355,29 +349,30 @@ meSing.Session.prototype = {
         console.log(texts.join(" "));
     },
 
-    // initialize the index display with kyle adams-style grid
-    initDisplay: function() {
+    setMetroFunction: function(metroFunction) {
+        this.metroFunction = metroFunction;
+    },
+
+    initGrid: function() {
         var steps = this.params.steps;
+        var numSteps = steps.length;
         var numMeasures = this.params.numMeasures;
-        var widthScale = 90; // i.e. scale to x%
         var textinput = this.params.textinput;
         var midinoteinput = this.params.midinoteinput;
 
-        for (var i=0; i<steps.length; i++) {
-            var col = $("<div class='col-a' id='label" + i + "'><strong>" + steps[i] + "</strong></div>");
-            col.css("width", (widthScale/steps.length) + "%");
-            this.grid.append(col);
-        }
         for (var i=0; i<numMeasures; i++) {
-            this.grid.append($("<br>"));
-            for (var j=0; j<steps.length; j++) {
+            for (var j=0; j<numSteps; j++) {
                 var inputIdx = (i*steps.length) + j;
-                var id = "measure"+i+"step"+j;
-                var col = $("<div class='col-a' id='"+id+"'><input class='textinput' type='text' value='" + textinput[inputIdx] + "'/><br><input class='midinoteinput' type='text' value='" + midinoteinput[inputIdx] + "'/></div>");
-                col.css("width", (widthScale/steps.length) + "%");
-                this.grid.append(col);
+                var data = {
+                    "text": textinput[inputIdx],
+                    "midinote": midinoteinput[inputIdx]
+                }
+                if (!this.grid[i]) {
+                    this.grid[i] = [];
+                }
+
+                this.grid[i][j] = data;
             }
-            this.grid.append($("<br>"));
         }
     }
 
