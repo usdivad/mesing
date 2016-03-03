@@ -3,7 +3,7 @@ var meSing = meSing || {};
 meSing.defaults = {
     steps: "1e&a2e&a3e&a4e&a",
     numMeasures: 4,
-    bpm: 60,
+    bpm: 40,
     // textinput: ["Row","","","","row","","","","row","","","your","boat","","","",
     //             "gent-","","","-lee","down","","","the","stream","","","","","","","",
     //             "Merr-","","-il-","-lee","Merr-","","-il-","-lee","Merr-","","-il-","-lee","Merr-","","-il-","-lee",
@@ -28,6 +28,7 @@ meSing.defaults = {
     speed: 320,
 };
 
+
 meSing.midiToHz = function(midi) {
     return (440 / 32) * (Math.pow(2,((midi - 9) / 12)));
 };
@@ -50,14 +51,62 @@ meSing.validInput = function(input) {
 
 meSing.bpmToMs = function(bpm) {
     return (60/bpm) * 1000;
+};
+
+
+meSing.Chorus = function(singers) {
+    this.meSpeakLoaded = false;
+    this.singers = singers;
+
+    $(document).ready(function() {
+        meSpeak.loadConfig("/js/lib/mespeak/mespeak_config.json", function() {
+            console.log("config done");
+            $("#voicesStatus").text("meSpeak config loaded; setting voices, please wait...");
+
+            meSpeak.loadVoice("/js/lib/mespeak/voices/en/en-us.json", function() {
+                console.log("mespeak voice loaded");
+                for (var i=0; i<singers.length; i++) {
+                    var singer = singers[i];
+                    singer.setVoices();
+                }
+            });
+        });
+    });
+};
+
+meSing.Chorus.prototype = {
+    constructor: meSing.Chorus,
+
+    startAll: function() {
+        for (var i=0; i<this.singers.length; i++) {
+            this.singers[i].metro.start();
+        }
+    },
+
+    stopAll: function() {
+        for (var i=0; i<this.singers.length; i++) {
+            this.singers[i].metro.stop();
+            this.singers[i].lyricsCount = 0;
+            if (this.singers[i].voice) {
+                this.singers[i].voice.modulatorGain.disconnect(); // not the best way to do this
+            }
+            this.singers[i].voice = null;
+        }
+    },
+
+    setAllVoices: function() {
+        for (var i=0; i<this.singers.length; i++) {
+            this.singers[i].setVoices();
+        }
+    }
 }
 
 
 /*
- * Session class
+ * Singer class
  */
-meSing.Session = function(params) {
-    var session = this;
+meSing.Singer = function(params) {
+    var singer = this;
     this.params = params;
     if (this.params === undefined) {
         this.params = meSing.defaults;
@@ -73,14 +122,14 @@ meSing.Session = function(params) {
         console.log("default metroFunction: stepNum=" + stepNum + ", stepId=" + stepId);
     }
     this.metro = T("interval",
-                    {interval: "BPM" + session.params.bpm + 
-                               " L" + session.params.steps.length
+                    {interval: "BPM" + singer.params.bpm + 
+                               " L" + singer.params.steps.length
                     },
                     function(count) {
-                        var measureNum = Math.floor(count / session.params.steps.length) % session.params.numMeasures;
-                        var stepNum = count % session.params.steps.length;
+                        var measureNum = Math.floor(count / singer.params.steps.length) % singer.params.numMeasures;
+                        var stepNum = count % singer.params.steps.length;
                         var stepId = "measure" + measureNum + "step" + stepNum;
-                        var musicData = session.grid[measureNum][stepNum];
+                        var musicData = singer.grid[measureNum][stepNum];
                         var text = musicData.text;
                         var midinote = musicData.midinote;
                         var duration = 0.8;
@@ -89,20 +138,20 @@ meSing.Session = function(params) {
                         
                         // increment lyrics count for offset testing (not needed now)
                         if (meSing.validInput(text)) {
-                            session.lyricsCount++;
+                            singer.lyricsCount++;
                         }
 
                         // create new voice (vocoder) if need be
-                        if (!session.voice || (measureNum==0 && stepNum==0)) {
-                            // this.voice = vocoder(session.ctx, textBuffer, textBuffer, freq);
-                            var buf = session.voiceBuffer;
+                        if (!singer.voice || (measureNum==0 && stepNum==0)) {
+                            // this.voice = vocoder(singer.ctx, textBuffer, textBuffer, freq);
+                            var buf = singer.voiceBuffer;
                             var freq = 60; // default
 
                             // if (meSing.validInput(midinote)) {
                             //     freq = meSing.midiToHz(midinote);
                             // }
 
-                            session.voice = vocoder(session.ctx, buf, buf, freq);
+                            singer.voice = vocoder(singer.ctx, buf, buf, freq);
                             console.log("new voice");
                         }
 
@@ -111,34 +160,23 @@ meSing.Session = function(params) {
                             var midiNoteAdj = midinote - 24; // send pitch down by two octaves
                             var freq = meSing.midiToHz(midiNoteAdj);
 
-                            session.voice.oscillatorNode.frequency.value = freq;
+                            singer.voice.oscillatorNode.frequency.value = freq;
                             console.log("set voice freq to " + freq);
 
-                            // console.log(session.voice);
+                            // console.log(singer.voice);
                         }
                        
                         // display
-                        session.metroFunction(stepNum, stepId);
+                        singer.metroFunction(stepNum, stepId);
 
                         // console.log("m"+measureNum+"s"+stepNum);
-                    }); // end metro
-
-    $(document).ready(function() {
-        meSpeak.loadConfig("/js/lib/mespeak/mespeak_config.json", function() {
-            console.log("config done");
-            $("#voicesStatus").text("meSpeak config loaded; setting voices, please wait...");
-
-            meSpeak.loadVoice("/js/lib/mespeak/voices/en/en-us.json", function() {
-                console.log("mespeak voice loaded");
-                session.setVoices();
-            });
-        });
-    });
+                    }); // end metro 
 };
-meSing.Session.prototype = {
-    constructor: meSing.Session,
 
-    // add a voice, i.e. syllable with note associated, to the session
+meSing.Singer.prototype = {
+    constructor: meSing.Singer,
+
+    // add a voice, i.e. syllable with note associated, to the singer
     addVoice: function(text, pitch, percentage) {
         if (!meSpeak.isConfigLoaded()) {
             var msg = "meSpeak config not yet loaded; please wait and try to set voices again";
@@ -170,25 +208,25 @@ meSing.Session.prototype = {
         });
 
         // decode speech data
-        var session = this;
+        var singer = this;
         this.ctx.decodeAudioData(speechData, function(decodedData) {
             // add decoded data to buffer and connect to audiocontext
             ab.buffer = decodedData;
-            ab.connect(session.ctx.destination);
+            ab.connect(singer.ctx.destination);
             console.log(ab);
 
             // add audio buffer to voices obj
-            session.lyricToVoice[text] = ab;
-            // session.voicesSet = true;
+            singer.lyricToVoice[text] = ab;
+            // singer.voicesSet = true;
 
-            console.log("voices for " + (Object.keys(session.lyricToVoice).length+1) + " lyrics set and ready to go!");
+            console.log("voices for " + (Object.keys(singer.lyricToVoice).length+1) + " lyrics set and ready to go!");
         });
 
         return true;
     },
 
     // create a single audio buffer containing the entire passage, i.e.
-    // all the vocalized lyrics in the session, in correct rhythm according
+    // all the vocalized lyrics in the singer, in correct rhythm according
     // to bpm and steps/measures dictated
     createPassageFromVoices: function(voices) { 
         var numMeasures = this.params.numMeasures;
@@ -299,9 +337,9 @@ meSing.Session.prototype = {
         }
 
         // do the next voice
-        var session = this;
+        var singer = this;
         window.setTimeout(function() {
-            session.createVoicesFromLyrics(lyrics, i+1);
+            singer.createVoicesFromLyrics(lyrics, i+1);
         }, 1);
 
         // console.log(percentage);

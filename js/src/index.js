@@ -1,19 +1,21 @@
-var session;
+var singer;
+var chorus;
 
 window.onload = function() {
     console.log("asdf");
-    session = new meSing.Session(meSing.defaults);
-    session.initGrid();
-    // session.initDisplay();
-    // session.setVoices();
+    singer = new meSing.Singer(meSing.defaults);
+    singer.initGrid();
+    chorus = new meSing.Chorus([singer]);
+    // singer.initDisplay();
+    // singer.setVoices();
 
     // initialize the index display with kyle adams-style grid
     var displayGrid = $("#msDisplay");
-    var steps = session.params.steps;
-    var numMeasures = session.params.numMeasures;
+    var steps = singer.params.steps;
+    var numMeasures = singer.params.numMeasures;
     var widthScale = 90; // i.e. scale to x%
-    var textinput = session.params.textinput;
-    var midinoteinput = session.params.midinoteinput;
+    var textinput = singer.params.textinput;
+    var midinoteinput = singer.params.midinoteinput;
 
     for (var i=0; i<steps.length; i++) {
         var col = $("<div class='col-a' id='label" + i + "'><strong>" + steps[i] + "</strong></div>");
@@ -22,6 +24,7 @@ window.onload = function() {
     }
     for (var i=0; i<numMeasures; i++) {
         displayGrid.append($("<br>"));
+
         for (var j=0; j<steps.length; j++) {
             var inputIdx = (i*steps.length) + j;
             var id = "measure"+i+"step"+j;
@@ -29,6 +32,7 @@ window.onload = function() {
             col.css("width", (widthScale/steps.length) + "%");
             displayGrid.append(col);
         }
+        
         displayGrid.append($("<br>"));
     }
 
@@ -47,14 +51,14 @@ window.onload = function() {
             }
         }
     };
-    session.setMetroFunction(metroFunction);
+    singer.setMetroFunction(metroFunction);
 
 
     // les boutons
     $("#startBtn").on("click", function(){
-        // session.setVoices();
-        if (Object.keys(session.lyricToVoice).length > 0) {
-            session.metro.start(); 
+        // singer.setVoices();
+        if (Object.keys(singer.lyricToVoice).length > 0) {
+            singer.metro.start(); 
         }
         else {
             $("#voicesStatus").text("please set voices before starting audio");
@@ -63,17 +67,17 @@ window.onload = function() {
         $("#startBtn").prop("disabled", true);
     });
     $("#stopBtn").on("click", function(){
-        session.metro.stop();
-        session.lyricsCount = 0;
-        if (session.voice) {
-            session.voice.modulatorGain.disconnect(); // not the best way to do this
+        singer.metro.stop();
+        singer.lyricsCount = 0;
+        if (singer.voice) {
+            singer.voice.modulatorGain.disconnect(); // not the best way to do this
         }
-        session.voice = null;
+        singer.voice = null;
 
         $("#startBtn").prop("disabled", false);
     });
     $("#setVoicesBtn").on("click", function(){
-        session.setVoices();
+        singer.setVoices();
         
         $("#startBtn").prop("disabled", true);
         $("#stopBtn").prop("disabled", true);
