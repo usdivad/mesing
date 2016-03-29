@@ -9,6 +9,29 @@ window.onload = function() {
     // singer.initDisplay();
     // singer.setVoices();
 
+    // autocomplete
+    var suggestedLyrics = [
+        "home",
+        "cheer",
+        "bang",
+        "raise",
+        "axe",
+        "crown",
+        "king",
+        "sleep",
+        "deaf",
+        "jar",
+        "main",
+        "moon",
+        "queer",
+        "tripe",
+        "found",
+        "veal",
+        "wear",
+        "yam",
+        "zap"
+    ];
+
     // initialize the index display with kyle adams-style grid
     var displayGrid = $("#msDisplay");
     var steps = singer.params.steps;
@@ -35,6 +58,13 @@ window.onload = function() {
         
         displayGrid.append($("<br>"));
     }
+
+
+    $(".textinput").autocomplete({
+        source: suggestedLyrics,
+        // minLength: 1,
+        autoFocus: true
+    });
 
 
     // custom metro function
