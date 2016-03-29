@@ -32,6 +32,10 @@ window.onload = function() {
         "zap"
     ];
 
+    // var getRhymes = function(word) {
+    //     var url = "http://rhymebrain.com/talk?function=getRhymes&maxResults=10&word=" + word
+    // }
+
     // initialize the index display with kyle adams-style grid
     var displayGrid = $("#msDisplay");
     var steps = singer.params.steps;
@@ -60,10 +64,35 @@ window.onload = function() {
     }
 
 
+    // $(".textinput").autocomplete({
+    //     source: suggestedLyrics,
+    //     // minLength: 1,
+    //     autoFocus: true
+    // });
+
     $(".textinput").autocomplete({
-        source: suggestedLyrics,
-        // minLength: 1,
-        autoFocus: true
+        source: function(request, response) {
+            // example:
+            // http://rhymebrain.com/talk?function=getRhymes&maxResults=10&word=javascript
+            $.get("http://rhymebrain.com/talk", {
+                function: "getRhymes",
+                maxResults: 10,
+                word: request.term
+            }, function(data) {
+                var filteredData = data.filter(function(obj) {
+                    return obj["syllables"] < 2;
+                });
+                var words = filteredData.map(function(obj) {
+                    return obj["word"];
+                });
+                response(words);
+            })
+        },
+        minLength: 0
+    });
+
+    $(".textinput").focus(function() {
+        $(this).autocomplete("search", $(this).val())
     });
 
 
