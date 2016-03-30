@@ -37,3 +37,7 @@ subtitle {
   font-size: 80%;
   margin-bottom: 20px;
 }
+
+.ui-menu-item {
+  background: white;
+}
