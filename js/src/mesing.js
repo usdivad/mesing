@@ -117,6 +117,7 @@ meSing.Singer = function(params) {
     this.lyricToVoice = {};
     this.lyricsCount = 0;
     this.grid = [];
+    this.initGrid(); // automatically init grid
     this.voiceBuffer = null;
     this.metroFunction = function(stepNum, stepId) {
         console.log("default metroFunction: stepNum=" + stepNum + ", stepId=" + stepId);

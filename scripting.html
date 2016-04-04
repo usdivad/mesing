@@ -1,0 +1,35 @@
+<html>
+    <head>
+        <title>Scripting fun with meSing.js !</title>
+        <h2>Scripting fun with meSing.js !</h2>
+    </head>
+    <body>
+        <!-- Javascript dependencies -->
+        <script src="js/lib/jquery-1.11.3.min.js"></script>
+        <script src="js/lib/mespeak/mespeak.full.js"></script>
+        <script src="js/lib/vocoder_jergason.js"></script>
+        <script src="js/lib/timbre.js"></script>
+
+        <!-- meSing.js library -->
+        <script src="js/src/mesing.js"></script>
+
+        <!-- Styling -->
+        <link rel="stylesheet" href="css/style.css"/>
+        
+        <div id="">
+            
+        </div>
+
+        <script>
+            var singer = new meSing.Singer(meSing.defaults);
+            // singer.initGrid();
+            var chorus = new meSing.Chorus([singer]);
+
+            // todo: - add/change lyrics and notes etc.
+            //       - polyphony?
+            //       - other settings e.g. tempo, transposition
+            //       - generativity
+
+        </script>
+    </body>
+</html>
