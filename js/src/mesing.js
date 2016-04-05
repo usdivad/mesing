@@ -392,6 +392,17 @@ meSing.Singer.prototype = {
         this.metroFunction = metroFunction;
     },
 
+    generateRandomVoices: function() {        
+        // for (var i=0; i<this.grid.length; i++) {
+        //     var measure = this.grid[i];
+        //     for (var j=0; j<measure.length; j++) {
+        //         var data = {
+        //             "text":
+        //         }
+        //     }
+        // }
+    },
+
     initGrid: function() {
         var steps = this.params.steps;
         var numSteps = steps.length;
