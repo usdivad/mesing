@@ -3,7 +3,7 @@ var meSing = meSing || {};
 meSing.defaults = {
     steps: "1e&a2e&a3e&a4e&a",
     numMeasures: 4,
-    bpm: 40,
+    bpm: 60,
     // textinput: ["Row","","","","row","","","","row","","","your","boat","","","",
     //             "gent-","","","-lee","down","","","the","stream","","","","","","","",
     //             "Merr-","","-il-","-lee","Merr-","","-il-","-lee","Merr-","","-il-","-lee","Merr-","","-il-","-lee",
@@ -378,6 +378,8 @@ meSing.Singer.prototype = {
             }
         }
 
+        console.log(this.lyrics);
+
         
         // create voices and start the chain of events
         // this.lyricToVoice =  this.createVoicesFromLyrics(this.lyrics, 0);
@@ -416,7 +418,7 @@ meSing.Singer.prototype = {
                 var data = {
                     "text": textinput[inputIdx],
                     "midinote": midinoteinput[inputIdx]
-                }
+                };
                 if (!this.grid[i]) {
                     this.grid[i] = [];
                 }
@@ -424,6 +426,12 @@ meSing.Singer.prototype = {
                 this.grid[i][j] = data;
             }
         }
+    },
+
+    setGridData: function(data, i, j)
+    {
+        console.log("setting (" + i + "," + j + ") from " + JSON.stringify(this.grid[i][j]) + " to " + JSON.stringify(data));
+        this.grid[i][j] = data;
     }
 
 };

@@ -136,6 +136,34 @@ window.onload = function() {
         $("#startBtn").prop("disabled", false);
     });
     $("#setVoicesBtn").on("click", function(){
+        console.log("setvoicesbtn clicked");
+        
+        for (var i=0; i<numMeasures; i++) {
+            for (var j=0; j<steps.length; j++) {
+                //console.log(i + ", " + j);
+                var inputIdx = (i*steps.length) + j;
+                var id = "measure"+i+"step"+j;
+                var inputs = $("#" + id);
+                var t = inputs.find(".textinput").val();
+                var m = inputs.find(".midinoteinput").val();
+
+                var data = {
+                    "text": "",
+                    "midinote": ""
+                }
+
+                if (t) {
+                    data.text = t;
+                }
+                if (m) {
+                    data.midinote = m;
+                }
+
+                singer.setGridData(data, i, j);
+            }
+        }
+
+        console.log(singer.grid[0][0]);
         singer.setVoices();
         
         $("#startBtn").prop("disabled", true);
