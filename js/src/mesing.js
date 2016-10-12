@@ -111,7 +111,16 @@ meSing.Singer = function(params) {
     if (this.params === undefined) {
         this.params = meSing.defaults;
     }
-    this.ctx = new AudioContext();
+    
+    window.AudioContext = window.AudioContext || window.webkitAudioContext;
+    try {
+        this.ctx = new AudioContext();
+    }
+    catch(e) {
+        alert("Sorry, looks like the Web Audio API isn't supported in this browser.");
+    }
+
+    //this.ctx = new AudioContext();
     this.voice = null;
     this.lyrics = [];
     this.lyricToVoice = {};
@@ -134,7 +143,9 @@ meSing.Singer = function(params) {
                         var text = musicData.text;
                         var midinote = musicData.midinote;
                         var duration = 0.8;
-                        console.log(midinote);
+                        if (midinote) {
+                            console.log(midinote);
+                        }
 
                         
                         // increment lyrics count for offset testing (not needed now)
@@ -280,7 +291,8 @@ meSing.Singer.prototype = {
                 // console.log("offsetBeats:" + offsetBeats + ", offsetSamples:" + offsetSamples);
 
                 var voiceBufferData = voice.buffer.getChannelData(0); //.slice(0, durationSamples);
-                var currentVoiceData = new Float32Array(durationSamples).map(function(n, i) {
+                var currentVoiceData = Array.prototype.map.call(new Float32Array(durationSamples), function(n, i) {
+                    //console.log("map: " + n + ", " + i);
                     if (i < voiceBufferData.length) {
                         return voiceBufferData[i];
                     }
@@ -299,7 +311,12 @@ meSing.Singer.prototype = {
         }
 
         // finally, hook it up to the context
-        audioBuffer.copyToChannel(audioData, 0, 0);
+        if (AudioBuffer.prototype.copyToChannel) {
+            audioBuffer.copyToChannel(audioData, 0, 0);
+        }
+        else {
+            audioBuffer.getChannelData(0).set(audioData, 0); // safari
+        }
         this.voiceBuffer = audioBuffer;
 
         // input
