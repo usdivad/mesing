@@ -438,7 +438,7 @@ meSing.Singer.prototype = {
                 };
                 if (!this.grid[i]) {
                     this.grid[i] = [];
-                }
+                }   
 
                 this.grid[i][j] = data;
             }
@@ -449,6 +449,12 @@ meSing.Singer.prototype = {
     {
         console.log("setting (" + i + "," + j + ") from " + JSON.stringify(this.grid[i][j]) + " to " + JSON.stringify(data));
         this.grid[i][j] = data;
+    }, 
+
+    resumeAudioContext: function() {
+        console.log("resuming audio context");
+        // this.ctx = ctx;
+        this.ctx.resume();
     }
 
 };
