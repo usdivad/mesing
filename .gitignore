@@ -2,6 +2,7 @@ abstract.*
 .DS_Store
 resources
 notes.txt
+*.mov
 
 js/lib/mespeak/*.html
 js/lib/mespeak/voices/*.json

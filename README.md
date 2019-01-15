@@ -14,5 +14,8 @@ The demo showcases an example usage of meSing.js: a songwriting tool that provid
 
 Multiple approaches were taken and experimented with while developing meSing.js, each with its own performance and usability benefits and drawbacks; a discussion of these approaches can provide insight into creating libraries atop the Web Audio API.
 
+--------
 
-Demo: http://usdivad.com/mesing
+- Interactive demo: http://usdivad.com/mesing
+- Video: https://vimeo.com/311523456
+- Polyphony demo: http://usdivad.com/mesing/polyphony.html
