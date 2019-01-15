@@ -1,109 +1,33 @@
+/**
+ * meSing.js (mesing.js)
+ * A JavaScript singing synthesis library by David Su (@usdivad)
+ **/
+
 var meSing = meSing || {};
 
+/*
+ * Default parameters
+ */
 meSing.defaults = {
-    steps: "1e&a2e&a3e&a4e&a",
-    numMeasures: 4,
-    bpm: 60,
-    // textinput: ["Row","","","","row","","","","row","","","your","boat","","","",
-    //             "gent-","","","-lee","down","","","the","stream","","","","","","","",
-    //             "Merr-","","-il-","-lee","Merr-","","-il-","-lee","Merr-","","-il-","-lee","Merr-","","-il-","-lee",
-    //             "life","","","is","but","","","a","dream","","dream","","dream","","dream","",           
-    //            ],
+    steps: "1e&a2e&a3e&a4e&a", // Grid steps
+    numMeasures: 4, // Number of measures for the phrase
+    bpm: 60, // Tempo
     textinput: ["Some","","","","where","","","","o-","","-ver","the","rain-","","-bow","",
                 "way","","","","up","","","","high","","","","","","","",
                 "And","","","","the","","","","dreams","","that","you","dream","","of","",
-                "once","","in","a","lull-","","-a-","","-by","","","","","","","",],
-    // midinoteinput: [60,"","","",60,"","","",60,"","",62,64,"","","",
-    //             64,"","",62,64,"","",65,67,67,67,67,"","","","",
-    //             72,"",72,72,67,"",67,67,64,"",64,64,60,"",60,60,
-    //             67,"","",65,64,"","",62,60,"",64,"",67,"",72,"",
-    //            ],
+                "once","","in","a","lull-","","-a-","","-by","","","","","","","",], // Text for singer to sing
     midinoteinput: ["60","","","","72","","","","71","","67","69","71","","72","",
                 "60","","","","69","","","","67","","","","","","","",
                 "57","","","","65","","","","64","","60","62","64","","65","",
-                "62","","59","60","62","","64","","60","60","60","60","","","","",],
-    wordgap: 50,
-    // speed: 40 * 6 / 2,
-    // speed: 200,
-    speed: 320,
+                "62","","59","60","62","","64","","60","60","60","60","","","","",], // MIDI notes for singer to sing
+    wordgap: 50, // Gap between words
+    speed: 320, // Word speed
 };
-
-
-meSing.midiToHz = function(midi) {
-    return (440 / 32) * (Math.pow(2,((midi - 9) / 12)));
-};
-
-meSing.concatFloat32Arrays = function(a1, a2) {
-    var arr = new Float32Array(a1.length + a2.length);
-    console.log("a1:" + a1.length + ", a2:" + a2.length + ", arr:" + arr.length);
-    arr.set(a1);
-    arr.set(a2, a1.length);
-    return arr;
-};
-
-meSing.cleanString = function(s) {
-    return s.replace(/[^A-Za-z0-9\s]/g, "");
-};
-
-meSing.validInput = function(input) {
-    return (input !== undefined && input.length > 0);
-};
-
-meSing.bpmToMs = function(bpm) {
-    return (60/bpm) * 1000;
-};
-
-
-meSing.Chorus = function(singers) {
-    this.meSpeakLoaded = false;
-    this.singers = singers;
-
-    $(document).ready(function() {
-        meSpeak.loadConfig("/js/lib/mespeak/mespeak_config.json", function() {
-            console.log("config done");
-            $("#voicesStatus").text("meSpeak config loaded; setting voices, please wait...");
-
-            meSpeak.loadVoice("/js/lib/mespeak/voices/en/en-us.json", function() {
-                console.log("mespeak voice loaded");
-                for (var i=0; i<singers.length; i++) {
-                    var singer = singers[i];
-                    singer.setVoices();
-                }
-            });
-        });
-    });
-};
-
-meSing.Chorus.prototype = {
-    constructor: meSing.Chorus,
-
-    startAll: function() {
-        for (var i=0; i<this.singers.length; i++) {
-            this.singers[i].metro.start();
-        }
-    },
-
-    stopAll: function() {
-        for (var i=0; i<this.singers.length; i++) {
-            this.singers[i].metro.stop();
-            this.singers[i].lyricsCount = 0;
-            if (this.singers[i].voice) {
-                this.singers[i].voice.modulatorGain.disconnect(); // not the best way to do this
-            }
-            this.singers[i].voice = null;
-        }
-    },
-
-    setAllVoices: function() {
-        for (var i=0; i<this.singers.length; i++) {
-            this.singers[i].setVoices();
-        }
-    }
-}
 
 
 /*
  * Singer class
+ * The base class for meSing
  */
 meSing.Singer = function(params) {
     var singer = this;
@@ -188,7 +112,7 @@ meSing.Singer = function(params) {
 meSing.Singer.prototype = {
     constructor: meSing.Singer,
 
-    // add a voice, i.e. syllable with note associated, to the singer
+    /* Add a voice, i.e. syllable with note associated, to the singer */
     addVoice: function(text, pitch, percentage) {
         if (!meSpeak.isConfigLoaded()) {
             var msg = "meSpeak config not yet loaded; please wait and try to set voices again";
@@ -237,9 +161,11 @@ meSing.Singer.prototype = {
         return true;
     },
 
-    // create a single audio buffer containing the entire passage, i.e.
-    // all the vocalized lyrics in the singer, in correct rhythm according
-    // to bpm and steps/measures dictated
+    /* 
+     * Create a single audio buffer containing the entire passage, i.e.
+     * all the vocalized lyrics in the singer, in correct rhythm according
+     * to bpm and steps/measures dictated
+     */
     createPassageFromVoices: function(voices) { 
         var numMeasures = this.params.numMeasures;
         var numSteps = this.params.steps.length;
@@ -327,7 +253,7 @@ meSing.Singer.prototype = {
 
     },
 
-    // recursively create voices from lyrics
+    /* Recursively create voices from lyrics */
     createVoicesFromLyrics: function(lyrics, i) {
 
         // check if we've bottomed out
@@ -364,7 +290,7 @@ meSing.Singer.prototype = {
         // $("#voicesStatus").text("adding voices; " + percentage + "% complete");
     },
 
-    // setup lyrics and voices
+    /* Setup lyrics and voices */
     setVoices: function() {
         var numSteps = this.params.steps.length;
         var numMeasures = this.params.numMeasures;
@@ -407,11 +333,15 @@ meSing.Singer.prototype = {
         console.log(texts.join(" "));
     },
 
+    /* Set the metro function, which gets called once per beat */
     setMetroFunction: function(metroFunction) {
         this.metroFunction = metroFunction;
     },
 
-    generateRandomVoices: function() {        
+    /* Generate random voices */
+    generateRandomVoices: function() { 
+        // TODO
+
         // for (var i=0; i<this.grid.length; i++) {
         //     var measure = this.grid[i];
         //     for (var j=0; j<measure.length; j++) {
@@ -422,6 +352,7 @@ meSing.Singer.prototype = {
         // }
     },
 
+    /* Initialize grid data a la sequencer */
     initGrid: function() {
         var steps = this.params.steps;
         var numSteps = steps.length;
@@ -445,12 +376,14 @@ meSing.Singer.prototype = {
         }
     },
 
+    /* Set grid data for measure i beat j */
     setGridData: function(data, i, j)
     {
         console.log("setting (" + i + "," + j + ") from " + JSON.stringify(this.grid[i][j]) + " to " + JSON.stringify(data));
         this.grid[i][j] = data;
     }, 
 
+    /* Resume AudioContext in case it was suspended/disabled */
     resumeAudioContext: function() {
         console.log("resuming audio context");
         // this.ctx = ctx;
@@ -460,8 +393,89 @@ meSing.Singer.prototype = {
 };
 
 /*
- * Voice class
+ * Chorus class
+ * A chorus of Singers, so we can have polyphony
  */
-meSing.Voice = function(text, midinote) {
+meSing.Chorus = function(singers) {
+    this.meSpeakLoaded = false;
+    this.singers = singers;
 
+    $(document).ready(function() {
+        meSpeak.loadConfig("/js/lib/mespeak/mespeak_config.json", function() {
+            console.log("config done");
+            $("#voicesStatus").text("meSpeak config loaded; setting voices, please wait...");
+
+            meSpeak.loadVoice("/js/lib/mespeak/voices/en/en-us.json", function() {
+                console.log("mespeak voice loaded");
+                for (var i=0; i<singers.length; i++) {
+                    var singer = singers[i];
+                    singer.setVoices();
+                }
+            });
+        });
+    });
+};
+
+meSing.Chorus.prototype = {
+    constructor: meSing.Chorus,
+
+    /* Get all Singers to start singing */
+    startAll: function() {
+        for (var i=0; i<this.singers.length; i++) {
+            this.singers[i].metro.start();
+        }
+    },
+
+    /* Stop all Singers' singing */
+    stopAll: function() {
+        for (var i=0; i<this.singers.length; i++) {
+            this.singers[i].metro.stop();
+            this.singers[i].lyricsCount = 0;
+            if (this.singers[i].voice) {
+                this.singers[i].voice.modulatorGain.disconnect(); // not the best way to do this
+            }
+            this.singers[i].voice = null;
+        }
+    },
+
+    /* Set voices for all Singers */
+    setAllVoices: function() {
+        for (var i=0; i<this.singers.length; i++) {
+            this.singers[i].setVoices();
+        }
+    }
 }
+
+
+/*
+ * Helper functions
+ */
+
+// Convert MIDI to a frequency in Hz
+meSing.midiToHz = function(midi) {
+    return (440 / 32) * (Math.pow(2,((midi - 9) / 12)));
+};
+
+// Concatenate two Float32Arrays
+meSing.concatFloat32Arrays = function(a1, a2) {
+    var arr = new Float32Array(a1.length + a2.length);
+    console.log("a1:" + a1.length + ", a2:" + a2.length + ", arr:" + arr.length);
+    arr.set(a1);
+    arr.set(a2, a1.length);
+    return arr;
+};
+
+// Clean up a string to pass to singers
+meSing.cleanString = function(s) {
+    return s.replace(/[^A-Za-z0-9\s]/g, "");
+};
+
+// Validate input
+meSing.validInput = function(input) {
+    return (input !== undefined && input.length > 0);
+};
+
+// Convert tempo from BPM to milliseconds
+meSing.bpmToMs = function(bpm) {
+    return (60/bpm) * 1000;
+};
