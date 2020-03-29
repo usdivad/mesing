@@ -96,6 +96,9 @@ window.onload = function() {
     });
     $("#setVoicesBtn").on("click", function(){
         console.log("setvoicesbtn clicked");
+
+        var steps = singer.params.steps;
+        var numMeasures = singer.params.numMeasures;
         
         for (var i=0; i<numMeasures; i++) {
             for (var j=0; j<steps.length; j++) {
