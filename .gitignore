@@ -5,8 +5,6 @@ notes.txt
 *.mov
 
 js/lib/mespeak/*.html
-js/lib/mespeak/voices/*.json
-js/lib/mespeak/voices/en/*.json
 js/lib/mespeak/msie_flashFallback/
 
 js/lib/Vocoder
